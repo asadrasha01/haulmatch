@@ -87,7 +87,30 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   };
 
   useEffect(() => {
-    loadAllAdminData();
+    let isMounted = true;
+    (async () => {
+      try {
+        const [driversData, ordersData, profilesData] = await Promise.all([
+          fetchAllDrivers(),
+          fetchFleetJobOrders(),
+          fetchAllProfiles()
+        ]);
+        if (isMounted) {
+          setDrivers(driversData);
+          setJobOrders(ordersData);
+          setProfiles(profilesData);
+        }
+      } catch (err: any) {
+        console.warn('Admin load error:', err);
+      } finally {
+        if (isMounted) {
+          setIsLoading(false);
+        }
+      }
+    })();
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
   const showNotification = (text: string, type: 'success' | 'error' = 'success') => {
