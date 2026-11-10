@@ -115,7 +115,7 @@ export const PlacementContractModal: React.FC<PlacementContractModalProps> = ({
 
         {/* Digital Signature Form */}
         <form onSubmit={handleSign}>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px', marginBottom: '14px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 220px), 1fr))', gap: '14px', marginBottom: '14px' }}>
             <div className="form-group">
               <label className="form-label">Carrier Company Name</label>
               <input
@@ -179,7 +179,7 @@ export const PlacementContractModal: React.FC<PlacementContractModalProps> = ({
           </div>
 
           {/* Action Buttons */}
-          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', flexWrap: 'wrap' }}>
             <button type="button" onClick={onClose} className="btn-secondary">
               Cancel
             </button>

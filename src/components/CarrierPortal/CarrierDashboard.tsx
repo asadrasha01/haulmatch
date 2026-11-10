@@ -145,7 +145,7 @@ export const CarrierDashboard: React.FC<CarrierDashboardProps> = ({ drivers, onC
           </p>
         </div>
 
-        <div style={{ borderLeft: '1px solid rgba(255,255,255,0.14)', paddingLeft: '20px' }}>
+        <div className="hm-stat-border-col" style={{ borderLeft: '1px solid rgba(255,255,255,0.14)', paddingLeft: '20px' }}>
           <div className="stat-value" style={{ color: '#ffffff' }}>
             {activeCount}
           </div>
@@ -154,7 +154,7 @@ export const CarrierDashboard: React.FC<CarrierDashboardProps> = ({ drivers, onC
           </div>
         </div>
 
-        <div style={{ borderLeft: '1px solid rgba(255,255,255,0.14)', paddingLeft: '20px' }}>
+        <div className="hm-stat-border-col" style={{ borderLeft: '1px solid rgba(255,255,255,0.14)', paddingLeft: '20px' }}>
           <div className="stat-value" style={{ color: '#34d399' }}>
             90-Day
           </div>
@@ -163,7 +163,7 @@ export const CarrierDashboard: React.FC<CarrierDashboardProps> = ({ drivers, onC
           </div>
         </div>
 
-        <div style={{ borderLeft: '1px solid rgba(255,255,255,0.14)', paddingLeft: '20px' }}>
+        <div className="hm-stat-border-col" style={{ borderLeft: '1px solid rgba(255,255,255,0.14)', paddingLeft: '20px' }}>
           <div className="stat-value" style={{ color: 'var(--road-amber)' }}>
             $1,500
           </div>
@@ -354,7 +354,7 @@ export const CarrierDashboard: React.FC<CarrierDashboardProps> = ({ drivers, onC
           layout
           style={{
             display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fill, minmax(360px, 1fr))',
+            gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 340px), 1fr))',
             gap: '20px'
           }}
         >

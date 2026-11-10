@@ -63,6 +63,7 @@ export const Header: React.FC<HeaderProps> = ({
       }}
     >
       <div
+        className="hm-portal-header-inner"
         style={{
           maxWidth: 1320,
           margin: '0 auto',
@@ -119,6 +120,7 @@ export const Header: React.FC<HeaderProps> = ({
 
         {/* Architectural Navigation Tabs */}
         <nav
+          className="hm-portal-nav"
           style={{
             display: 'flex',
             alignItems: 'center',
@@ -168,7 +170,7 @@ export const Header: React.FC<HeaderProps> = ({
         </nav>
 
         {/* Right Controls: Account + DB Status + Driver Apply CTA */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+        <div className="hm-portal-actions" style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
           {profile && (
             <div
               style={{

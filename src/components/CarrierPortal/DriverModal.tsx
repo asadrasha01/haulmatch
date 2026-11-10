@@ -167,7 +167,7 @@ export const DriverModal: React.FC<DriverModalProps> = ({ driver, onClose, onUnl
         <div
           style={{
             display: 'grid',
-            gridTemplateColumns: 'minmax(320px, 1.3fr) minmax(280px, 1fr)',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 320px), 1fr))',
             gap: '0',
             maxHeight: 'calc(88vh - 75px)',
             overflowY: 'auto'

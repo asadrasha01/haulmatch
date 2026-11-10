@@ -65,7 +65,7 @@ export const RetentionTracker: React.FC<RetentionTrackerProps> = ({ drivers }) =
           padding: '28px 32px',
           marginBottom: '28px',
           display: 'grid',
-          gridTemplateColumns: 'minmax(280px, 1.5fr) minmax(260px, 1fr)',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 280px), 1fr))',
           gap: '24px',
           alignItems: 'center'
         }}
@@ -333,8 +333,8 @@ export const RetentionTracker: React.FC<RetentionTrackerProps> = ({ drivers }) =
               <div
                 style={{
                   display: 'grid',
-                  gridTemplateColumns: 'repeat(4, 1fr)',
-                  gap: '8px',
+                  gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 155px), 1fr))',
+                  gap: '10px',
                   fontSize: '0.75rem',
                   paddingTop: '8px',
                   borderTop: '1px solid var(--border-subtle)',

@@ -146,6 +146,7 @@ Can I send over our 1-page agreement and seats intake sheet so we can match your
         <div
           style={{
             display: 'flex',
+            flexWrap: 'wrap',
             border: '1px solid #121315',
             background: '#ffffff'
           }}
@@ -672,6 +673,7 @@ Can I send over our 1-page agreement and seats intake sheet so we can match your
           {/* Clean 1-Page Letter Document */}
           <div
             id="printable-agreement"
+            className="hm-printable-agreement"
             style={{
               background: '#ffffff',
               color: '#0f172a',
@@ -742,7 +744,7 @@ Can I send over our 1-page agreement and seats intake sheet so we can match your
             </div>
 
             {/* Signature Blocks */}
-            <div style={{ borderTop: '1px solid #cbd5e1', paddingTop: '18px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '32px', fontSize: '9.5pt' }}>
+            <div style={{ borderTop: '1px solid #cbd5e1', paddingTop: '18px', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 220px), 1fr))', gap: '32px', fontSize: '9.5pt' }}>
               <div>
                 <div style={{ fontWeight: 700, marginBottom: '8px', color: '#0f172a', fontFamily: 'sans-serif' }}>
                   FOR CLIENT (CARRIER):

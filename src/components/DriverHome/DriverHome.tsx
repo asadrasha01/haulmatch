@@ -579,6 +579,7 @@ export const DriverHome: React.FC<DriverHomeProps> = ({
         }}
       >
         <div
+          className="hm-home-header-inner"
           style={{
             maxWidth: 1320, margin: '0 auto', padding: `14px ${SIDE_PAD}`,
             display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 24
@@ -589,14 +590,15 @@ export const DriverHome: React.FC<DriverHomeProps> = ({
             <span style={{ ...mono(11, 'rgba(255,255,255,0.55)', '0.08em'), textTransform: 'none' }}>CDL-A</span>
           </a>
           <nav
+            className="hm-home-nav"
             style={{
               display: 'flex', alignItems: 'center', gap: 'clamp(14px, 2.4vw, 32px)',
               fontSize: 15, fontWeight: 500, color: 'rgba(255,255,255,0.82)',
               flexWrap: 'wrap', justifyContent: 'flex-end'
             }}
           >
-            <a href="#how" onClick={anchor('how')}>How it works</a>
-            <a href="#bonus" onClick={anchor('bonus')}>The $1,500</a>
+            <a href="#how" onClick={anchor('how')} className="hm-hide-mobile">How it works</a>
+            <a href="#bonus" onClick={anchor('bonus')} className="hm-hide-mobile">The $1,500</a>
             <a
               href="#carriers"
               onClick={(e) => { e.preventDefault(); onCarrierLogin(); }}
@@ -616,7 +618,7 @@ export const DriverHome: React.FC<DriverHomeProps> = ({
       </header>
 
       {/* --------------------------- right-edge scroll road --------------------------- */}
-      <div ref={roadRef} style={{ position: 'fixed', right: 16, top: 92, bottom: 24, width: 26, zIndex: 40, pointerEvents: 'none' }}>
+      <div ref={roadRef} className="hm-scroll-road" style={{ position: 'fixed', right: 16, top: 92, bottom: 24, width: 26, zIndex: 40, pointerEvents: 'none' }}>
         <div style={{ position: 'absolute', inset: 0, background: 'rgba(18,19,21,0.6)', borderRadius: 13, backdropFilter: 'blur(6px)', WebkitBackdropFilter: 'blur(6px)' }} />
         <div style={{ position: 'absolute', left: 12, width: 2, top: 10, bottom: 10, background: 'repeating-linear-gradient(to bottom, rgba(255,255,255,0.32) 0 8px, rgba(255,255,255,0) 8px 18px)' }} />
         <div ref={trailRef} style={{ position: 'absolute', left: 12, width: 2, top: 10, height: 0, background: AMBER }} />
@@ -934,6 +936,7 @@ export const DriverHome: React.FC<DriverHomeProps> = ({
           </h2>
           <div style={{ borderTop: `3px solid ${INK}` }}>
             <div
+              className="hm-compare-header"
               style={{
                 display: 'grid', gridTemplateColumns: 'minmax(140px, 1fr) minmax(0, 1.4fr) minmax(0, 1.4fr)',
                 gap: '16px 32px', padding: '14px 0', borderBottom: '1px solid rgba(18,19,21,0.15)',
@@ -948,6 +951,7 @@ export const DriverHome: React.FC<DriverHomeProps> = ({
               <div
                 key={label}
                 ref={setReveal_}
+                className="hm-compare-row"
                 style={{
                   display: 'grid', gridTemplateColumns: 'minmax(140px, 1fr) minmax(0, 1.4fr) minmax(0, 1.4fr)',
                   gap: '16px 32px', padding: '22px 0',
@@ -1176,7 +1180,7 @@ export const DriverHome: React.FC<DriverHomeProps> = ({
                   </div>
 
                   {/* 3-Question Chapter Switcher Strip */}
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', background: '#121315' }}>
+                  <div className="hm-chapter-strip" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', background: '#121315' }}>
                     {activeProfile.clips.map((clip, idx) => {
                       const active = vidChapter === idx;
                       return (
@@ -1401,6 +1405,7 @@ export const DriverHome: React.FC<DriverHomeProps> = ({
       {/* ------------------------------ mobile sticky bar ------------------------------ */}
       <div
         ref={stickyRef}
+        className="hm-mobile-sticky"
         style={{
           position: 'fixed', left: 12, right: 12, bottom: 12, zIndex: 60, display: 'none', gap: 8,
           transition: 'transform .35s cubic-bezier(.16,.84,.24,1), opacity .35s',

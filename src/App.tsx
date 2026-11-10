@@ -239,7 +239,7 @@ export const App: React.FC = () => {
       )}
 
       {/* Main Content Viewport — cross-fade/slide between role views */}
-      <main style={{ flex: 1, padding: currentRole === 'driver' ? 0 : '32px 24px' }}>
+      <main style={{ flex: 1, padding: currentRole === 'driver' ? 0 : 'clamp(16px, 3vw, 32px) clamp(12px, 3vw, 24px)' }}>
         <AnimatePresence mode="wait" initial={false}>
           <motion.div
             key={currentRole}
