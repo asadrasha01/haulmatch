@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import confetti from 'canvas-confetti';
 import {
   ShieldCheck,
@@ -53,15 +53,55 @@ const fieldInputStyle: React.CSSProperties = {
   borderRadius: 0
 };
 
+export const DRAFT_STORAGE_KEY = 'haulmatch_driver_application_draft_v1';
+
+interface DraftPayload {
+  step: 1 | 2 | 3;
+  formData: Record<string, any>;
+  savedAt?: string;
+}
+
+const loadDraftFromStorage = (): {
+  draft: DraftPayload | null;
+  notice: string | null;
+  initialDate: Date | null;
+} => {
+  try {
+    const raw = localStorage.getItem(DRAFT_STORAGE_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (parsed && parsed.formData) {
+        let notice: string | null = null;
+        let date: Date | null = null;
+        if (parsed.savedAt) {
+          date = new Date(parsed.savedAt);
+          const timeStr = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+          notice = `Draft restored from ${timeStr} · Pick up where you left off.`;
+        }
+        return { draft: parsed, notice, initialDate: date };
+      }
+    }
+  } catch {
+    // ignore
+  }
+  return { draft: null, notice: null, initialDate: null };
+};
+
 export const ExpressApplicationForm: React.FC<ExpressApplicationFormProps> = ({
   onDriverRegistered,
   onSwitchToCarrierView,
   prefill
 }) => {
-  const [step, setStep] = useState<1 | 2 | 3 | 4>(1);
+  const [initialDraftState] = useState(() => loadDraftFromStorage());
 
-  // Form State
-  const [formData, setFormData] = useState({
+  const [step, setStep] = useState<1 | 2 | 3 | 4>(() => {
+    if (initialDraftState.draft?.step && initialDraftState.draft.step >= 1 && initialDraftState.draft.step <= 3) {
+      return initialDraftState.draft.step;
+    }
+    return 1;
+  });
+
+  const getInitialFormData = () => ({
     fullName: '',
     phone: '',
     email: '',
@@ -86,10 +126,80 @@ export const ExpressApplicationForm: React.FC<ExpressApplicationFormProps> = ({
     videoRecorded: false
   });
 
+  // Form State initialized from restored draft if available
+  const [formData, setFormData] = useState(() => {
+    const base = getInitialFormData();
+    if (initialDraftState.draft?.formData) {
+      return {
+        ...base,
+        ...initialDraftState.draft.formData,
+        zip: initialDraftState.draft.formData.zip || prefill?.zip || base.zip,
+        cdlClass: initialDraftState.draft.formData.cdlClass || prefill?.cdlClass || base.cdlClass,
+        yearsExperience: initialDraftState.draft.formData.yearsExperience ?? prefill?.yearsExperience ?? base.yearsExperience
+      };
+    }
+    return base;
+  });
+
   const [ocrScanning, setOcrScanning] = useState(false);
   const [ocrSuccess, setOcrSuccess] = useState(false);
   const [ocrErrors, setOcrErrors] = useState<{ cdl?: string; medCard?: string }>({});
   const [registeredDriver, setRegisteredDriver] = useState<DriverProfile | null>(null);
+
+  // Draft auto-save & restore state
+  const [draftRestoredNotice, setDraftRestoredNotice] = useState<string | null>(initialDraftState.notice);
+  const [lastSavedTime, setLastSavedTime] = useState<Date | null>(initialDraftState.initialDate);
+
+  // Debounced auto-save draft to localStorage whenever step or form values change
+  useEffect(() => {
+    if (step === 4) {
+      try {
+        localStorage.removeItem(DRAFT_STORAGE_KEY);
+      } catch {
+        // ignore
+      }
+      return;
+    }
+
+    const hasContent =
+      Boolean(formData.fullName.trim()) ||
+      Boolean(formData.phone.trim()) ||
+      Boolean(formData.email.trim()) ||
+      Boolean(formData.licenseNumber.trim()) ||
+      Boolean(formData.city.trim());
+
+    if (!hasContent) return;
+
+    const timer = setTimeout(() => {
+      try {
+        const payload = {
+          step,
+          formData,
+          savedAt: new Date().toISOString()
+        };
+        localStorage.setItem(DRAFT_STORAGE_KEY, JSON.stringify(payload));
+        setLastSavedTime(new Date());
+      } catch {
+        // ignore
+      }
+    }, 400);
+
+    return () => clearTimeout(timer);
+  }, [step, formData]);
+
+  const handleClearDraft = () => {
+    try {
+      localStorage.removeItem(DRAFT_STORAGE_KEY);
+    } catch {
+      // ignore
+    }
+    setDraftRestoredNotice(null);
+    setLastSavedTime(null);
+    setStep(1);
+    setFormData(getInitialFormData());
+    setOcrErrors({});
+    setOcrSuccess(false);
+  };
 
   // Real file objects selected by the driver, held in memory until the driver ID
   // exists (after the video interview step) so they can be uploaded to Storage.
@@ -299,11 +409,29 @@ export const ExpressApplicationForm: React.FC<ExpressApplicationFormProps> = ({
             gap: 12
           }}
         >
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <span style={{ width: 8, height: 8, background: AMBER, display: 'inline-block' }} />
-            <span style={monoLabel(11, AMBER, '0.1em')}>
-              $1,500 90-Day Retention Bonus Included · Direct Deposit Escrow
-            </span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <span style={{ width: 8, height: 8, background: AMBER, display: 'inline-block' }} />
+              <span style={monoLabel(11, AMBER, '0.1em')}>
+                $1,500 90-Day Retention Bonus Included · Direct Deposit Escrow
+              </span>
+            </div>
+            {step < 4 && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <span
+                  style={{
+                    width: 6,
+                    height: 6,
+                    borderRadius: '50%',
+                    background: lastSavedTime ? '#10b981' : 'rgba(255,255,255,0.4)',
+                    boxShadow: lastSavedTime ? '0 0 6px #10b981' : 'none'
+                  }}
+                />
+                <span style={monoLabel(10, 'rgba(255,255,255,0.7)', '0.06em')}>
+                  {lastSavedTime ? 'Draft Auto-Saved' : 'Auto-Save Active'}
+                </span>
+              </div>
+            )}
           </div>
 
           {step < 4 && (
@@ -323,6 +451,43 @@ export const ExpressApplicationForm: React.FC<ExpressApplicationFormProps> = ({
             </button>
           )}
         </div>
+
+        {/* Draft Restored Banner */}
+        {draftRestoredNotice && step < 4 && (
+          <div
+            style={{
+              background: '#fff9e6',
+              borderBottom: `1px solid ${AMBER}`,
+              padding: '10px 24px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: 12,
+              flexWrap: 'wrap',
+              fontSize: 13,
+              color: INK
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <Sparkles size={15} color={AMBER_TEXT} />
+              <span style={{ fontWeight: 500 }}>{draftRestoredNotice}</span>
+            </div>
+            <button
+              type="button"
+              onClick={handleClearDraft}
+              style={{
+                ...monoLabel(11, MUTED),
+                background: 'transparent',
+                border: 'none',
+                textDecoration: 'underline',
+                cursor: 'pointer',
+                padding: '2px 6px'
+              }}
+            >
+              Start Fresh
+            </button>
+          </div>
+        )}
 
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))' }}>
           {stepsMeta.map((s, idx) => {

@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { ExpressApplicationForm } from './ExpressApplicationForm';
+import { ExpressApplicationForm, DRAFT_STORAGE_KEY } from './ExpressApplicationForm';
 
 vi.mock('../../services/ocr', () => ({
   runOcrOnDocument: vi.fn()
@@ -90,5 +90,109 @@ describe('ExpressApplicationForm — document upload OCR gating', () => {
     await uploadFile(user, /upload cdl photo/i, 'clear.jpg');
     await waitFor(() => expect(screen.getByText(/verified:/i)).toBeInTheDocument());
     expect(screen.queryByText(/could not verify this document/i)).not.toBeInTheDocument();
+  });
+});
+
+describe('ExpressApplicationForm — application draft auto-save and restore', () => {
+  beforeEach(() => {
+    localStorage.clear();
+  });
+
+  it('restores draft data and displays the draft restoration banner', () => {
+    const fakeDraft = {
+      step: 1,
+      formData: {
+        fullName: 'Sarah Connor',
+        phone: '(555) 019-2834',
+        email: 'sarah.connor@roadway.com',
+        city: 'Austin',
+        state: 'TX',
+        zip: '78701',
+        cdlClass: 'Class A',
+        issuingState: 'TX',
+        licenseNumber: 'TX-99887766',
+        yearsExperience: 8,
+        endorsements: ['HazMat (H)'],
+        equipment: ['Dry Van'],
+        preferredRoutes: ['Regional (Southwest)'],
+        hometime: 'Home Every Weekend',
+        payExpectation: '$0.75 - $0.80 CPM',
+        hasCleanMvr: true,
+        violationsCount: 0,
+        hasDotMedCard: true,
+        medCardExpiry: '2027-11-20',
+        cdlUploaded: false,
+        medCardUploaded: false,
+        videoRecorded: false
+      },
+      savedAt: new Date().toISOString()
+    };
+    localStorage.setItem(DRAFT_STORAGE_KEY, JSON.stringify(fakeDraft));
+
+    render(<ExpressApplicationForm onDriverRegistered={vi.fn()} onSwitchToCarrierView={vi.fn()} />);
+
+    expect(screen.getByText(/draft restored from/i)).toBeInTheDocument();
+    expect(screen.getByDisplayValue('Sarah Connor')).toBeInTheDocument();
+    expect(screen.getByDisplayValue('(555) 019-2834')).toBeInTheDocument();
+    expect(screen.getByDisplayValue('sarah.connor@roadway.com')).toBeInTheDocument();
+  });
+
+  it('allows starting fresh by clearing the restored draft', async () => {
+    const user = userEvent.setup();
+    const fakeDraft = {
+      step: 1,
+      formData: {
+        fullName: 'John Matrix',
+        phone: '(555) 123-4567',
+        email: 'john@matrix.com',
+        city: 'Houston',
+        state: 'TX',
+        zip: '77001',
+        cdlClass: 'Class A',
+        issuingState: 'TX',
+        licenseNumber: 'TX-11223344',
+        yearsExperience: 10,
+        endorsements: [],
+        equipment: ['Flatbed'],
+        preferredRoutes: ['OTR (Lower 48)'],
+        hometime: 'Home Monthly',
+        payExpectation: '$0.80 CPM',
+        hasCleanMvr: true,
+        violationsCount: 0,
+        hasDotMedCard: true,
+        medCardExpiry: '2027-01-01',
+        cdlUploaded: false,
+        medCardUploaded: false,
+        videoRecorded: false
+      },
+      savedAt: new Date().toISOString()
+    };
+    localStorage.setItem(DRAFT_STORAGE_KEY, JSON.stringify(fakeDraft));
+
+    render(<ExpressApplicationForm onDriverRegistered={vi.fn()} onSwitchToCarrierView={vi.fn()} />);
+
+    expect(screen.getByDisplayValue('John Matrix')).toBeInTheDocument();
+    const startFreshBtn = screen.getByRole('button', { name: /start fresh/i });
+    await user.click(startFreshBtn);
+
+    expect(screen.queryByText(/draft restored from/i)).not.toBeInTheDocument();
+    expect(screen.queryByDisplayValue('John Matrix')).not.toBeInTheDocument();
+    expect(localStorage.getItem(DRAFT_STORAGE_KEY)).toBeNull();
+  });
+
+  it('auto-saves form progress into localStorage after typing', async () => {
+    const user = userEvent.setup();
+    render(<ExpressApplicationForm onDriverRegistered={vi.fn()} onSwitchToCarrierView={vi.fn()} />);
+
+    const nameInput = screen.getByPlaceholderText('e.g. Raymond Cole');
+    await user.type(nameInput, 'Alex Trucker');
+
+    await waitFor(() => {
+      const stored = localStorage.getItem(DRAFT_STORAGE_KEY);
+      expect(stored).not.toBeNull();
+      const parsed = JSON.parse(stored!);
+      expect(parsed.formData.fullName).toBe('Alex Trucker');
+      expect(screen.getByText(/draft auto-saved/i)).toBeInTheDocument();
+    });
   });
 });
