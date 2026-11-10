@@ -1293,9 +1293,11 @@ export const updateDriverStatus = async (
         .update({ status, updated_at: new Date().toISOString() })
         .eq('id', driverId);
 
-      if (error) return { success: false, error: error.message };
+      if (error) {
+        console.warn('Supabase cloud updateDriverStatus warning:', error.message);
+      }
     } catch (err: any) {
-      return { success: false, error: err?.message || 'Update driver status failed' };
+      console.warn('Supabase cloud updateDriverStatus error:', err?.message || err);
     }
   }
 
@@ -1320,9 +1322,11 @@ export const deleteDriver = async (
         .delete()
         .eq('id', driverId);
 
-      if (error) return { success: false, error: error.message };
+      if (error) {
+        console.warn('Supabase cloud deleteDriver warning:', error.message);
+      }
     } catch (err: any) {
-      return { success: false, error: err?.message || 'Delete driver failed' };
+      console.warn('Supabase cloud deleteDriver error:', err?.message || err);
     }
   }
 
@@ -1347,9 +1351,11 @@ export const deleteFleetJobOrder = async (
         .delete()
         .eq('id', orderId);
 
-      if (error) return { success: false, error: error.message };
+      if (error) {
+        console.warn('Supabase cloud deleteFleetJobOrder warning:', error.message);
+      }
     } catch (err: any) {
-      return { success: false, error: err?.message || 'Delete fleet job order failed' };
+      console.warn('Supabase cloud deleteFleetJobOrder error:', err?.message || err);
     }
   }
 
