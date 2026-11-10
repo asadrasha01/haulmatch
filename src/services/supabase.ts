@@ -34,6 +34,13 @@ const DEFAULT_LOCAL_USERS: LocalUserRecord[] = [
     companyName: 'HaulMatch Headquarters'
   },
   {
+    id: 'usr-admin-02',
+    email: 'admin@haulmatch.com',
+    password: 'admin123',
+    role: 'staff',
+    companyName: 'HaulMatch Operations'
+  },
+  {
     id: 'usr-carrier-01',
     email: 'recruiting@swiftlinelogistics.com',
     password: 'password123',
@@ -98,7 +105,16 @@ const getLocalUsers = (): LocalUserRecord[] => {
     const raw = localStorage.getItem(LOCAL_STORAGE_USERS);
     if (raw) {
       const parsed = JSON.parse(raw);
-      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        // Ensure standard admin accounts always exist
+        const hasAdmin = parsed.some((u) => u.email?.toLowerCase() === 'admin@haulmatch.ai');
+        if (!hasAdmin) {
+          const merged = [...DEFAULT_LOCAL_USERS, ...parsed.filter((p: any) => !DEFAULT_LOCAL_USERS.some((d) => d.email === p.email))];
+          localStorage.setItem(LOCAL_STORAGE_USERS, JSON.stringify(merged));
+          return merged;
+        }
+        return parsed;
+      }
     }
   } catch {
     // ignore

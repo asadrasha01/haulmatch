@@ -222,3 +222,4 @@ export const exportPlacementsLedgerCsv = (drivers: DriverProfile[]): void => {
   const today = new Date().toISOString().split('T')[0];
   downloadCsv(`haulmatch-placements-escrow-ledger-${today}.csv`, csvContent);
 };
+

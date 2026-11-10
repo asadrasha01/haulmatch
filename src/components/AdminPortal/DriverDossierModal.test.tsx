@@ -59,3 +59,4 @@ describe('DriverDossierModal — Candidate Video Screening & DQ Dossier Inspecto
     expect(onCloseMock).toHaveBeenCalled();
   });
 });
+

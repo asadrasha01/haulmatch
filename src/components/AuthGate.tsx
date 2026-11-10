@@ -504,6 +504,46 @@ export const AuthGate: React.FC<AuthGateProps> = ({
                   <div style={{ flex: 1, height: 1, background: RULE }} />
                 </div>
 
+                {mode === 'signIn' && (
+                  <div
+                    style={{
+                      padding: '12px 14px',
+                      background: 'rgba(240, 162, 59, 0.08)',
+                      border: '1px solid rgba(240, 162, 59, 0.35)',
+                      marginBottom: 16,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      flexWrap: 'wrap',
+                      gap: 10
+                    }}
+                  >
+                    <div>
+                      <div style={monoStyle(10, AMBER_TEXT, '0.08em')}>DEFAULT ADMIN CREDENTIALS</div>
+                      <div style={{ fontSize: 13, marginTop: 2, color: INK }}>
+                        <strong>admin@haulmatch.ai</strong> · <span style={{ fontFamily: MONO, fontSize: 12 }}>password123</span>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setEmail('admin@haulmatch.ai');
+                        setPassword('password123');
+                      }}
+                      style={{
+                        ...monoStyle(10, INK),
+                        fontWeight: 700,
+                        padding: '6px 12px',
+                        background: AMBER,
+                        border: 'none',
+                        cursor: 'pointer'
+                      }}
+                    >
+                      Autofill Admin →
+                    </button>
+                  </div>
+                )}
+
                 {mode === 'signUp' && (
                   <div style={{ marginBottom: 16 }}>
                     <label className="form-label" style={{ marginBottom: 6 }}>
