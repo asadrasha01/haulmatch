@@ -241,3 +241,4 @@ export const deleteSavedSearch = (searchId: string): void => {
     // ignore
   }
 };
+

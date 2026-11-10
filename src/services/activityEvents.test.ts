@@ -71,3 +71,4 @@ describe('activityEvents service — Audit Feed, Interviews & Saved Searches', (
     expect(searches.some((s) => s.id === saved.id)).toBe(false);
   });
 });
+

@@ -126,4 +126,37 @@ describe('RetentionTracker — SMS pulse & bonus disbursement UI', () => {
       await screen.findByText(/couldn't record that action — please try again\./i)
     ).toBeInTheDocument();
   });
+
+  it('runs automated 24h batch pulse sentinel check across placed drivers', async () => {
+    const user = userEvent.setup();
+    mockSendRetentionSmsPulse.mockResolvedValue({
+      success: true,
+      sentAt: '2026-11-10T09:00:00.000Z',
+    });
+
+    render(<RetentionTracker drivers={[makePlacedDriver()]} />);
+
+    const batchBtn = screen.getByRole('button', { name: /run automated 24h pulse sentinel/i });
+    await user.click(batchBtn);
+
+    await waitFor(() => {
+      expect(mockSendRetentionSmsPulse).toHaveBeenCalled();
+    });
+
+    expect(await screen.findByText(/automated 24h retention sentinel pulse dispatched/i)).toBeInTheDocument();
+  });
+
+  it('toggles at-risk sentiment flag and displays intervention alert', async () => {
+    const user = userEvent.setup();
+    render(<RetentionTracker drivers={[makePlacedDriver()]} />);
+
+    const flagBtn = screen.getByRole('button', { name: /flag at-risk/i });
+    await user.click(flagBtn);
+
+    expect(await screen.findByText(/⚠️ AT-RISK OF TURNOVER/i)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /resolve risk ✓/i })).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: /resolve risk ✓/i }));
+    expect(screen.queryByText(/⚠️ AT-RISK OF TURNOVER/i)).not.toBeInTheDocument();
+  });
 });

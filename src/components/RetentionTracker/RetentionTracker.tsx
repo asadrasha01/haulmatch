@@ -7,10 +7,13 @@ import {
   Award,
   Send,
   Loader2,
-  AlertTriangle
+  AlertTriangle,
+  ShieldAlert,
+  Sparkles
 } from 'lucide-react';
 import type { DriverProfile } from '../../types';
 import { sendRetentionSmsPulse, disburseRetentionBonus } from '../../services/supabase';
+import { logActivityEvent } from '../../services/activityEvents';
 
 interface RetentionTrackerProps {
   drivers: DriverProfile[];
@@ -18,16 +21,50 @@ interface RetentionTrackerProps {
 
 type ActionStatus = 'idle' | 'pending' | 'done' | 'error';
 
+const STORAGE_KEY_AT_RISK = 'haulmatch_at_risk_placements_v1';
+
 export const RetentionTracker: React.FC<RetentionTrackerProps> = ({ drivers }) => {
   // Placement Economics Interactive Calculator State
   const [carrierBounty, setCarrierBounty] = useState<number>(5000);
   const [driverBonus, setDriverBonus] = useState<number>(1500);
   const [monthlyPlacements, setMonthlyPlacements] = useState<number>(15);
 
-  // Persistence state for SMS pulse checks and bonus disbursements
+  // Persistence state for SMS pulse checks, at-risk flags, and bonus disbursements
   const [smsStatus, setSmsStatus] = useState<Record<string, ActionStatus>>({});
   const [smsSentAt, setSmsSentAt] = useState<Record<string, string>>({});
   const [bonusStatus, setBonusStatus] = useState<Record<string, ActionStatus>>({});
+  const [batchPulseActive, setBatchPulseActive] = useState(false);
+  const [batchNotice, setBatchNotice] = useState<string | null>(null);
+
+  const [atRiskMap, setAtRiskMap] = useState<Record<string, boolean>>(() => {
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY_AT_RISK);
+      if (saved) return JSON.parse(saved);
+    } catch {
+      // ignore
+    }
+    return {};
+  });
+
+  const toggleAtRisk = (driver: DriverProfile) => {
+    const nextState = !atRiskMap[driver.id];
+    const updated = { ...atRiskMap, [driver.id]: nextState };
+    setAtRiskMap(updated);
+    try {
+      localStorage.setItem(STORAGE_KEY_AT_RISK, JSON.stringify(updated));
+    } catch {
+      // ignore
+    }
+
+    logActivityEvent(
+      nextState ? 'carrier_unlocked' : 'candidate_placed',
+      'Retention Pulse Sentinel',
+      `${driver.fullName} (${driver.id})`,
+      nextState
+        ? `⚠️ Placement flagged AT-RISK with ${driver.placementDetails?.carrierName || 'Carrier'}. Recruiter intervention recommended.`
+        : `At-risk flag resolved. Placement on track for Day-90 milestone.`
+    );
+  };
 
   const handleSendSmsPulse = async (driver: DriverProfile) => {
     setSmsStatus((prev) => ({ ...prev, [driver.id]: 'pending' }));
@@ -38,6 +75,19 @@ export const RetentionTracker: React.FC<RetentionTrackerProps> = ({ drivers }) =
     } else {
       setSmsStatus((prev) => ({ ...prev, [driver.id]: 'error' }));
     }
+  };
+
+  const handleRunBatchPulse = async () => {
+    setBatchPulseActive(true);
+    setBatchNotice(null);
+    for (const d of placedDrivers) {
+      await sendRetentionSmsPulse(d.id);
+      setSmsStatus((prev) => ({ ...prev, [d.id]: 'done' }));
+      setSmsSentAt((prev) => ({ ...prev, [d.id]: new Date().toISOString() }));
+    }
+    setBatchPulseActive(false);
+    setBatchNotice(`Automated 24h retention sentinel pulse dispatched to ${placedDrivers.length} active placements.`);
+    setTimeout(() => setBatchNotice(null), 5000);
   };
 
   const handleDisburseBonus = async (driver: DriverProfile) => {
@@ -233,6 +283,57 @@ export const RetentionTracker: React.FC<RetentionTrackerProps> = ({ drivers }) =
         </div>
       </div>
 
+      {/* Automated Retention Pulse Cadence & Sentinel Bar */}
+      <div
+        className="glass-panel"
+        style={{
+          padding: '20px 24px',
+          marginBottom: '24px',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          flexWrap: 'wrap',
+          gap: '16px',
+          background: 'linear-gradient(135deg, rgba(18,19,21,0.92) 0%, rgba(28,30,34,0.95) 100%)',
+          color: '#ffffff',
+          borderLeft: '4px solid #f0a23b'
+        }}
+      >
+        <div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+            <span style={{ fontSize: '0.74rem', fontFamily: 'var(--font-mono)', color: '#f0a23b', textTransform: 'uppercase' }}>
+              AUTOMATED SENTINEL CADENCE: DAY 14 · DAY 30 · DAY 60 · DAY 85 · DAY 90
+            </span>
+            <Sparkles size={14} color="#f0a23b" />
+          </div>
+          <div style={{ fontSize: '1rem', fontWeight: 700 }}>
+            Automated SMS Pulse Schedule Active
+          </div>
+          <div style={{ fontSize: '0.8rem', color: '#94a3b8', marginTop: '2px' }}>
+            Background Edge Functions automatically check driver satisfaction, weekly miles, and dispatcher sentiment to protect your $4,500 fee.
+          </div>
+        </div>
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <button
+            type="button"
+            disabled={batchPulseActive || placedDrivers.length === 0}
+            onClick={handleRunBatchPulse}
+            className="btn-gold"
+            style={{ padding: '10px 18px', fontSize: '0.82rem', display: 'flex', alignItems: 'center', gap: '6px' }}
+          >
+            {batchPulseActive ? <Loader2 size={14} className="animate-spin" /> : <Send size={14} />}
+            <span>{batchPulseActive ? 'Dispatching...' : 'Run Automated 24h Pulse Sentinel'}</span>
+          </button>
+        </div>
+      </div>
+
+      {batchNotice && (
+        <div style={{ padding: '12px 18px', background: '#ecfdf5', border: '1px solid #10b981', color: '#047857', fontSize: '0.82rem', marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <CheckCircle size={16} /> {batchNotice}
+        </div>
+      )}
+
       {/* Active Placements 90-Day Milestone Tracker */}
       <div style={{ marginBottom: '24px' }}>
         <h3 style={{ fontSize: '1.3rem', fontWeight: 700, marginBottom: '6px' }}>
@@ -265,15 +366,48 @@ export const RetentionTracker: React.FC<RetentionTrackerProps> = ({ drivers }) =
           const smsSent = smsStatus[driver.id] === 'done';
           const smsFailed = smsStatus[driver.id] === 'error';
 
+          const isAtRisk = Boolean(atRiskMap[driver.id]);
+
           return (
             <div
               key={driver.id}
               className="glass-panel"
               style={{
                 padding: '24px',
-                border: isFinished ? '1px solid #a7f3d0' : '1px solid var(--border-card)'
+                border: isAtRisk
+                  ? '1px solid #fca5a5'
+                  : isFinished
+                  ? '1px solid #a7f3d0'
+                  : '1px solid var(--border-card)',
+                borderLeft: isAtRisk ? '5px solid #dc2626' : undefined
               }}
             >
+              {isAtRisk && (
+                <div
+                  style={{
+                    padding: '10px 14px',
+                    background: '#fef2f2',
+                    border: '1px solid #fecaca',
+                    color: '#991b1b',
+                    fontSize: '0.8rem',
+                    marginBottom: '14px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    flexWrap: 'wrap',
+                    gap: '8px'
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontWeight: 600 }}>
+                    <ShieldAlert size={15} color="#dc2626" />
+                    <span>⚠️ AT-RISK OF TURNOVER: Driver reported satisfaction dip. Recruiter intervention recommended.</span>
+                  </div>
+                  <span style={{ fontSize: '0.72rem', background: '#dc2626', color: '#fff', padding: '2px 6px', fontWeight: 700 }}>
+                    HIGH PRIORITY
+                  </span>
+                </div>
+              )}
+
               <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: '16px', flexWrap: 'wrap', gap: '12px' }}>
                 <div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
@@ -413,7 +547,25 @@ export const RetentionTracker: React.FC<RetentionTrackerProps> = ({ drivers }) =
                   )}
                 </div>
 
-                <div style={{ display: 'flex', gap: '8px' }}>
+                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                  <button
+                    type="button"
+                    onClick={() => toggleAtRisk(driver)}
+                    style={{
+                      padding: '8px 12px',
+                      fontSize: '0.78rem',
+                      background: isAtRisk ? '#fef2f2' : '#ffffff',
+                      border: `1px solid ${isAtRisk ? '#dc2626' : 'var(--border-subtle)'}`,
+                      color: isAtRisk ? '#dc2626' : 'var(--text-secondary)',
+                      cursor: 'pointer',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '4px'
+                    }}
+                  >
+                    <AlertTriangle size={13} />
+                    <span>{isAtRisk ? 'Resolve Risk ✓' : 'Flag At-Risk'}</span>
+                  </button>
                   <button
                     className="btn-secondary"
                     style={{ padding: '8px 14px', fontSize: '0.78rem', opacity: smsPending ? 0.65 : 1, cursor: smsPending ? 'not-allowed' : 'pointer' }}

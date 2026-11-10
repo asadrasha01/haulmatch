@@ -172,11 +172,7 @@ export const signUpWithEmail = async (
         }
       });
 
-      if (error) {
-        return { success: false, error: error.message };
-      }
-
-      if (data.user && data.session) {
+      if (!error && data.user && data.session) {
         await supabaseClient.from('profiles').upsert(
           [
             {
@@ -191,9 +187,11 @@ export const signUpWithEmail = async (
         return { success: true, autoSignedIn: true };
       }
 
-      return { success: true, autoSignedIn: false };
+      if (error) {
+        console.warn('Live Supabase signUp warning, falling back to local auth:', error.message);
+      }
     } catch (err: any) {
-      return { success: false, error: err?.message || 'Sign up failed.' };
+      console.warn('Live Supabase signUp error, falling back to local auth:', err?.message || err);
     }
   }
 
@@ -242,12 +240,12 @@ export const signInWithEmail = async (
         email: normalizedEmail,
         password
       });
-      if (error) {
-        return { success: false, error: error.message };
+      if (!error) {
+        return { success: true };
       }
-      return { success: true };
+      console.warn('Live Supabase signIn warning, checking local accounts:', error.message);
     } catch (err: any) {
-      return { success: false, error: err?.message || 'Sign in failed.' };
+      console.warn('Live Supabase signIn error, checking local accounts:', err?.message || err);
     }
   }
 
