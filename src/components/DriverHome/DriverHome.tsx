@@ -306,6 +306,23 @@ export const DriverHome: React.FC<DriverHomeProps> = ({
   /* scroll choreography: right-edge road, route fill, sticky bar */
   useEffect(() => {
     let raf = 0;
+    let glide = 0;
+    const reduceMotion =
+      typeof window.matchMedia === 'function' &&
+      window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+    // The rig eases toward its scroll target every frame instead of snapping,
+    // so it glides smoothly on touch devices where native scroll is jumpy.
+    const rig = { current: 10, target: 10 };
+    const paintRig = () => {
+      glide = 0;
+      const delta = rig.target - rig.current;
+      rig.current = Math.abs(delta) < 0.15 ? rig.target : rig.current + delta * 0.14;
+      if (rigRef.current) rigRef.current.style.transform = `translate3d(0, ${rig.current - 10}px, 0)`;
+      if (trailRef.current) trailRef.current.style.height = `${Math.max(0, rig.current + 10)}px`;
+      if (rig.current !== rig.target) glide = requestAnimationFrame(paintRig);
+    };
+
     const update = () => {
       const y = window.scrollY;
       const vh = window.innerHeight;
@@ -313,12 +330,14 @@ export const DriverHome: React.FC<DriverHomeProps> = ({
       const prog = Math.min(1, Math.max(0, y / max));
       const road = roadRef.current;
       if (road) {
-        const small = window.innerWidth < 760;
-        road.style.display = small ? 'none' : 'block';
         const span = road.clientHeight - 20 - 70;
-        const top = 10 + prog * span;
-        if (rigRef.current) rigRef.current.style.transform = `translateY(${top - 10}px)`;
-        if (trailRef.current) trailRef.current.style.height = `${Math.max(0, top - 10 + 20)}px`;
+        rig.target = 10 + prog * span;
+        if (reduceMotion) {
+          rig.current = rig.target;
+          paintRig();
+        } else if (!glide) {
+          glide = requestAnimationFrame(paintRig);
+        }
         if (rigInnerRef.current && Math.abs(y - lastY.current) > 2) {
           rigInnerRef.current.style.transform = y < lastY.current ? 'rotate(180deg)' : 'none';
         }
@@ -362,6 +381,7 @@ export const DriverHome: React.FC<DriverHomeProps> = ({
     update();
     return () => {
       cancelAnimationFrame(raf);
+      cancelAnimationFrame(glide);
       window.removeEventListener('scroll', onScroll);
       window.removeEventListener('resize', onScroll);
     };
@@ -620,15 +640,15 @@ export const DriverHome: React.FC<DriverHomeProps> = ({
       {/* --------------------------- right-edge scroll road --------------------------- */}
       <div ref={roadRef} className="hm-scroll-road" style={{ position: 'fixed', right: 16, top: 92, bottom: 24, width: 26, zIndex: 40, pointerEvents: 'none' }}>
         <div style={{ position: 'absolute', inset: 0, background: 'rgba(18,19,21,0.6)', borderRadius: 13, backdropFilter: 'blur(6px)', WebkitBackdropFilter: 'blur(6px)' }} />
-        <div style={{ position: 'absolute', left: 12, width: 2, top: 10, bottom: 10, background: 'repeating-linear-gradient(to bottom, rgba(255,255,255,0.32) 0 8px, rgba(255,255,255,0) 8px 18px)' }} />
-        <div ref={trailRef} style={{ position: 'absolute', left: 12, width: 2, top: 10, height: 0, background: AMBER }} />
+        <div className="hm-road-line" style={{ position: 'absolute', left: 12, width: 2, top: 10, bottom: 10, background: 'repeating-linear-gradient(to bottom, rgba(255,255,255,0.32) 0 8px, rgba(255,255,255,0) 8px 18px)' }} />
+        <div ref={trailRef} className="hm-road-line" style={{ position: 'absolute', left: 12, width: 2, top: 10, height: 0, background: AMBER, willChange: 'height' }} />
         {ROAD_MARKERS.map((label, i) => (
           <div key={label} ref={(el) => setMarker(el, i)} style={{ position: 'absolute', right: 0, top: 0, display: 'flex', alignItems: 'center', gap: 10 }}>
-            <span style={markerLabel}>{label}</span>
-            <span style={{ width: 6, height: 6, borderRadius: '50%', background: AMBER, marginRight: 10 }} />
+            <span className="hm-road-label" style={markerLabel}>{label}</span>
+            <span className="hm-road-dot" style={{ width: 6, height: 6, borderRadius: '50%', background: AMBER, marginRight: 10 }} />
           </div>
         ))}
-        <div ref={rigRef} style={{ position: 'absolute', left: 6, top: 10, width: 14, height: 70 }}>
+        <div ref={rigRef} className="hm-road-rig" style={{ position: 'absolute', left: 6, top: 10, width: 14, height: 70, willChange: 'transform' }}>
           <div
             ref={rigInnerRef}
             style={{

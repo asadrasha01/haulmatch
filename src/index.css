@@ -593,9 +593,29 @@ body::-webkit-scrollbar {
     font-size: 16px !important;
   }
 
-  /* Hide desktop right-edge scroll road so it never overlaps mobile content */
+  /* Slim right-edge truck road on mobile: narrower, clears the header and
+     the floating "Apply" CTA, labels hidden (dots only) */
   .hm-scroll-road {
+    right: 2px !important;
+    width: 18px !important;
+    top: 72px !important;
+    bottom: 86px !important;
+  }
+
+  .hm-scroll-road .hm-road-line {
+    left: 8px !important;
+  }
+
+  .hm-scroll-road .hm-road-rig {
+    left: 2px !important;
+  }
+
+  .hm-scroll-road .hm-road-label {
     display: none !important;
+  }
+
+  .hm-scroll-road .hm-road-dot {
+    margin-right: 6px !important;
   }
 
   /* Enable floating bottom "Apply in 3 minutes" CTA on mobile */
