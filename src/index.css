@@ -1,69 +1,78 @@
 /* ==========================================================================
    HaulMatch AI - Global Design System & Variables
-   Modern Dark Logistics & Freight Tech Aesthetic
+   Clean, Professional Light-Mode SaaS Aesthetic
    ========================================================================== */
 
 :root {
-  /* Color Palette */
-  --bg-dark: #070b14;
-  --bg-primary: #0b1120;
-  --bg-secondary: #0f172a;
-  --bg-card: rgba(17, 24, 39, 0.75);
-  --bg-card-hover: rgba(30, 41, 59, 0.85);
-  --bg-glass: rgba(15, 23, 42, 0.65);
-  --bg-glass-active: rgba(37, 99, 235, 0.12);
-  --bg-input: rgba(15, 23, 42, 0.9);
+  /* Color Palette — Unified with HaulMatch Editorial Paper & Ink Design */
+  --bg-dark: #e9e5dc;
+  --bg-primary: #ffffff;
+  --bg-secondary: #f3f0e9;
+  --bg-card: #ffffff;
+  --bg-card-hover: #faf8f4;
+  --bg-glass: rgba(12, 13, 15, 0.92);
+  --bg-glass-active: rgba(240, 162, 59, 0.12);
+  --bg-input: #ffffff;
 
-  /* Accents & Gradients */
-  --primary: #3b82f6;
-  --primary-light: #60a5fa;
-  --primary-glow: rgba(59, 130, 246, 0.35);
-  --primary-gradient: linear-gradient(135deg, #2563eb 0%, #06b6d4 100%);
-  --accent-cyan: #06b6d4;
-  --accent-cyan-glow: rgba(6, 182, 212, 0.3);
-  --accent-emerald: #10b981;
-  --accent-emerald-glow: rgba(16, 185, 129, 0.25);
-  --accent-amber: #f59e0b;
-  --accent-amber-glow: rgba(245, 158, 11, 0.25);
-  --accent-rose: #f43f5e;
-  --accent-purple: #8b5cf6;
-  --gold-gradient: linear-gradient(135deg, #fbbf24 0%, #f59e0b 50%, #d97706 100%);
+  /* Accents */
+  --primary: #121315;
+  --primary-light: #b86d0e;
+  --primary-glow: rgba(240, 162, 59, 0.2);
+  --primary-gradient: #121315;
+  --accent-cyan: #0e7490;
+  --accent-cyan-glow: rgba(14, 116, 144, 0.15);
+  --accent-emerald: #059669;
+  --accent-emerald-glow: rgba(5, 150, 105, 0.15);
+  --accent-amber: #b86d0e;
+  --accent-amber-glow: rgba(240, 162, 59, 0.18);
+  --accent-rose: #e11d48;
+  --accent-purple: #6d28d9;
+  --gold-gradient: #f0a23b;
 
   /* Text & Foreground */
-  --text-primary: #f8fafc;
-  --text-secondary: #94a3b8;
-  --text-muted: #64748b;
-  --text-highlight: #38bdf8;
+  --text-primary: #121315;
+  --text-secondary: #45474b;
+  --text-muted: #5d5f63;
+  --text-highlight: #b86d0e;
 
   /* Borders & Dividers */
-  --border-subtle: rgba(255, 255, 255, 0.08);
-  --border-card: rgba(255, 255, 255, 0.12);
-  --border-glow: rgba(59, 130, 246, 0.4);
-  --border-focus: #3b82f6;
+  --border-subtle: rgba(18, 19, 21, 0.12);
+  --border-card: rgba(18, 19, 21, 0.18);
+  --border-glow: rgba(240, 162, 59, 0.55);
+  --border-focus: #121315;
 
-  /* Radii */
-  --radius-sm: 8px;
-  --radius-md: 12px;
-  --radius-lg: 18px;
-  --radius-xl: 24px;
-  --radius-full: 9999px;
+  /* Radii — Architectural Crisp Edges */
+  --radius-sm: 0px;
+  --radius-md: 0px;
+  --radius-lg: 0px;
+  --radius-xl: 0px;
+  --radius-full: 0px;
 
   /* Shadows */
-  --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.3);
-  --shadow-md: 0 8px 24px -4px rgba(0, 0, 0, 0.45);
-  --shadow-lg: 0 16px 36px -6px rgba(0, 0, 0, 0.6);
-  --shadow-glow: 0 0 24px rgba(59, 130, 246, 0.25);
-  --shadow-emerald-glow: 0 0 24px rgba(16, 185, 129, 0.25);
+  --shadow-sm: 0 1px 2px rgba(18, 19, 21, 0.05);
+  --shadow-md: 0 6px 18px rgba(18, 19, 21, 0.08);
+  --shadow-lg: 0 16px 36px -8px rgba(18, 19, 21, 0.16);
+  --shadow-glow: 0 0 0 2px rgba(240, 162, 59, 0.35);
+  --shadow-emerald-glow: 0 0 0 2px rgba(5, 150, 105, 0.2);
 
   /* Typography */
-  --font-main: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  --font-heading: 'Outfit', sans-serif;
-  --font-mono: 'JetBrains Mono', monospace;
+  --font-main: 'Barlow', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-heading: 'Barlow Condensed', 'Inter', -apple-system, sans-serif;
+  --font-display: 'Barlow Condensed', 'Inter', -apple-system, sans-serif;
+  --font-mono: 'IBM Plex Mono', 'JetBrains Mono', ui-monospace, monospace;
+
+  /* Bold trucking-brand blocks */
+  --ink: #121315;
+  --ink-soft: #0c0d0f;
+  --paper: #f3f0e9;
+  --paper-alt: #e9e5dc;
+  --road-amber: #f0a23b;
+  --block-blue: #121315;
 
   /* Transitions */
   --transition-fast: 0.15s cubic-bezier(0.4, 0, 0.2, 1);
-  --transition-normal: 0.25s cubic-bezier(0.4, 0, 0.2, 1);
-  --transition-smooth: 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+  --transition-normal: 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-smooth: 0.3s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 /* ==========================================================================
@@ -79,7 +88,8 @@
 html, body {
   width: 100%;
   min-height: 100vh;
-  background-color: var(--bg-dark);
+  background-color: #f3f0e9;
+  background-image: none;
   color: var(--text-primary);
   font-family: var(--font-main);
   line-height: 1.5;
@@ -88,19 +98,21 @@ html, body {
   overflow-x: hidden;
 }
 
-body {
-  background-image: 
-    radial-gradient(circle at 15% 15%, rgba(37, 99, 235, 0.08) 0%, transparent 40%),
-    radial-gradient(circle at 85% 30%, rgba(6, 182, 212, 0.06) 0%, transparent 35%),
-    radial-gradient(circle at 50% 85%, rgba(139, 92, 246, 0.05) 0%, transparent 45%);
-  background-attachment: fixed;
-}
-
 h1, h2, h3, h4, h5, h6 {
   font-family: var(--font-heading);
   color: var(--text-primary);
   font-weight: 700;
-  letter-spacing: -0.02em;
+  letter-spacing: -0.01em;
+}
+
+.hm-page h1,
+.hm-page h2,
+.hm-page h3,
+.hm-page h4,
+.hm-page h5,
+.hm-page h6,
+.hm-page p {
+  color: inherit;
 }
 
 p {
@@ -127,23 +139,17 @@ input, select, textarea {
   color: var(--text-primary);
 }
 
-/* Custom Scrollbar */
-::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+/* Hide native browser scrollbar so only the HaulMatch truck scroll-road shows */
+html, body {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
 }
 
-::-webkit-scrollbar-track {
-  background: var(--bg-dark);
-}
-
-::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.15);
-  border-radius: 4px;
-}
-
-::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.28);
+html::-webkit-scrollbar,
+body::-webkit-scrollbar {
+  display: none;
+  width: 0;
+  height: 0;
 }
 
 /* ==========================================================================
@@ -151,25 +157,24 @@ input, select, textarea {
    ========================================================================== */
 
 .glass-panel {
-  background: var(--bg-card);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  border: 1px solid var(--border-card);
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-md);
+  background: #ffffff;
+  border: 1px solid rgba(18, 19, 21, 0.14);
+  border-top: 3px solid #121315;
+  border-radius: 0;
+  box-shadow: var(--shadow-sm);
   transition: border-color var(--transition-normal), box-shadow var(--transition-normal);
 }
 
 .glass-panel:hover {
-  border-color: rgba(255, 255, 255, 0.18);
+  border-color: rgba(18, 19, 21, 0.25);
+  border-top-color: #121315;
 }
 
 .glass-panel-glow {
-  background: var(--bg-card);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  border: 1px solid var(--border-glow);
-  box-shadow: var(--shadow-glow);
+  background: #ffffff;
+  border: 1px solid #121315;
+  border-top: 3px solid #f0a23b;
+  box-shadow: var(--shadow-md);
 }
 
 .badge {
@@ -177,69 +182,69 @@ input, select, textarea {
   align-items: center;
   gap: 6px;
   padding: 4px 10px;
-  font-size: 0.75rem;
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
   font-weight: 600;
-  border-radius: var(--radius-full);
-  letter-spacing: 0.02em;
+  border-radius: 0;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
 }
 
 .badge-blue {
-  background: rgba(59, 130, 246, 0.15);
-  color: var(--primary-light);
-  border: 1px solid rgba(59, 130, 246, 0.35);
+  background: #f3f0e9;
+  color: #121315;
+  border: 1px solid rgba(18, 19, 21, 0.2);
 }
 
 .badge-emerald {
-  background: rgba(16, 185, 129, 0.15);
-  color: #34d399;
-  border: 1px solid rgba(16, 185, 129, 0.35);
+  background: #ecfdf5;
+  color: #047857;
+  border: 1px solid #a7f3d0;
 }
 
 .badge-amber {
-  background: rgba(245, 158, 11, 0.15);
-  color: #fbbf24;
-  border: 1px solid rgba(245, 158, 11, 0.35);
+  background: rgba(240, 162, 59, 0.15);
+  color: #8a4f06;
+  border: 1px solid rgba(240, 162, 59, 0.45);
 }
 
 .badge-purple {
-  background: rgba(139, 92, 246, 0.15);
-  color: #c084fc;
-  border: 1px solid rgba(139, 92, 246, 0.35);
+  background: #121315;
+  color: #f0a23b;
+  border: 1px solid #121315;
 }
 
 .badge-gold {
-  background: linear-gradient(135deg, rgba(245, 158, 11, 0.2), rgba(217, 119, 6, 0.25));
-  color: #fef08a;
-  border: 1px solid rgba(245, 158, 11, 0.5);
-  box-shadow: 0 0 12px rgba(245, 158, 11, 0.2);
+  background: rgba(240, 162, 59, 0.18);
+  color: #8a4f06;
+  border: 1px solid rgba(240, 162, 59, 0.5);
 }
 
-/* Primary Button */
+/* Primary Button — Editorial Amber or Ink Block */
 .btn-primary {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 8px;
-  background: var(--primary-gradient);
-  color: #ffffff;
-  font-weight: 600;
+  background: #f0a23b;
+  color: #121315;
+  font-weight: 700;
   font-size: 0.95rem;
-  padding: 12px 24px;
-  border-radius: var(--radius-md);
-  box-shadow: 0 4px 16px rgba(37, 99, 235, 0.35);
+  padding: 13px 24px;
+  border-radius: 0;
+  border: 1px solid #121315;
   cursor: pointer;
   transition: all var(--transition-fast);
 }
 
 .btn-primary:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(37, 99, 235, 0.5);
-  filter: brightness(1.1);
+  background: #ffb85c;
+  color: #121315;
+  box-shadow: 0 4px 14px rgba(18, 19, 21, 0.12);
 }
 
 .btn-primary:active {
-  transform: translateY(0);
+  background: #e09128;
 }
 
 /* Secondary Button */
@@ -248,21 +253,21 @@ input, select, textarea {
   align-items: center;
   justify-content: center;
   gap: 8px;
-  background: rgba(255, 255, 255, 0.06);
-  border: 1px solid var(--border-card);
-  color: var(--text-primary);
+  background: #ffffff;
+  border: 1px solid rgba(18, 19, 21, 0.25);
+  color: #121315;
   font-weight: 600;
-  font-size: 0.95rem;
+  font-size: 0.92rem;
   padding: 12px 22px;
-  border-radius: var(--radius-md);
+  border-radius: 0;
   cursor: pointer;
   transition: all var(--transition-fast);
 }
 
 .btn-secondary:hover {
-  background: rgba(255, 255, 255, 0.12);
-  border-color: rgba(255, 255, 255, 0.25);
-  transform: translateY(-1px);
+  background: #121315;
+  color: #ffffff;
+  border-color: #121315;
 }
 
 /* Gold / Bonus Action Button */
@@ -271,21 +276,20 @@ input, select, textarea {
   align-items: center;
   justify-content: center;
   gap: 8px;
-  background: var(--gold-gradient);
-  color: #1a0f00;
+  background: #f0a23b;
+  color: #121315;
   font-weight: 700;
   font-size: 0.95rem;
-  padding: 12px 24px;
-  border-radius: var(--radius-md);
-  box-shadow: 0 4px 18px rgba(245, 158, 11, 0.4);
+  padding: 12px 22px;
+  border-radius: 0;
+  border: 1px solid #121315;
   cursor: pointer;
   transition: all var(--transition-fast);
 }
 
 .btn-gold:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 6px 24px rgba(245, 158, 11, 0.6);
-  filter: brightness(1.08);
+  background: #ffb85c;
+  color: #121315;
 }
 
 /* Danger / Stop Button */
@@ -294,17 +298,15 @@ input, select, textarea {
   align-items: center;
   justify-content: center;
   gap: 8px;
-  background: linear-gradient(135deg, #ef4444, #dc2626);
+  background: #dc2626;
   color: #ffffff;
   font-weight: 600;
   padding: 10px 20px;
-  border-radius: var(--radius-md);
-  box-shadow: 0 4px 14px rgba(239, 68, 68, 0.35);
+  border-radius: 0;
 }
 
 .btn-danger:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 6px 18px rgba(239, 68, 68, 0.45);
+  background: #b91c1c;
 }
 
 /* Subtle icon button */
@@ -312,19 +314,19 @@ input, select, textarea {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 40px;
-  height: 40px;
-  border-radius: var(--radius-md);
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid var(--border-subtle);
+  width: 38px;
+  height: 38px;
+  border-radius: 0;
+  background: #ffffff;
+  border: 1px solid rgba(18, 19, 21, 0.2);
   color: var(--text-secondary);
   transition: all var(--transition-fast);
 }
 
 .btn-icon:hover {
-  background: rgba(255, 255, 255, 0.1);
-  color: var(--text-primary);
-  border-color: rgba(255, 255, 255, 0.2);
+  background: #121315;
+  color: #ffffff;
+  border-color: #121315;
 }
 
 /* Input Fields */
@@ -335,9 +337,12 @@ input, select, textarea {
 }
 
 .form-label {
-  font-size: 0.85rem;
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
   font-weight: 600;
-  color: var(--text-secondary);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #5d5f63;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -345,23 +350,130 @@ input, select, textarea {
 
 .form-input, .form-select, .form-textarea {
   width: 100%;
-  padding: 12px 16px;
-  background: var(--bg-input);
-  border: 1px solid var(--border-card);
-  border-radius: var(--radius-md);
-  color: var(--text-primary);
+  padding: 12px 14px;
+  background: #ffffff;
+  border: 1px solid rgba(18, 19, 21, 0.25);
+  border-radius: 0;
+  color: #121315;
   font-size: 0.95rem;
   transition: all var(--transition-fast);
 }
 
 .form-input:focus, .form-select:focus, .form-textarea:focus {
-  border-color: var(--border-focus);
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.25);
-  background: rgba(15, 23, 42, 0.98);
+  border-color: #121315;
+  box-shadow: inset 0 0 0 1px #121315;
+  background: #ffffff;
 }
 
 .form-input::placeholder {
   color: var(--text-muted);
+}
+
+/* ==========================================================================
+   Bold Trucking-Brand Display Elements (Phase 2)
+   ========================================================================== */
+
+.display-heading {
+  font-family: var(--font-display);
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.01em;
+  line-height: 0.95;
+  color: var(--text-primary);
+}
+
+.display-kicker {
+  font-family: var(--font-display);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  font-size: 0.95rem;
+  color: var(--primary);
+}
+
+/* Dark ink hero block — matches the main page editorial dark blocks */
+.hero-block {
+  position: relative;
+  overflow: hidden;
+  background: #0c0d0f;
+  border: 1px solid rgba(18, 19, 21, 0.25);
+  border-top: 3px solid #f0a23b;
+  border-radius: 0;
+  color: #ffffff;
+}
+
+.hero-block .display-heading { color: #ffffff; }
+
+/* Amber "road stripe" accent bar */
+.road-stripe {
+  height: 6px;
+  background: repeating-linear-gradient(
+    90deg,
+    var(--road-amber) 0 48px,
+    transparent 48px 72px
+  );
+  border-radius: 3px;
+}
+
+/* Stat strip: dark ink band matching the hero photo */
+.stat-strip {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: linear-gradient(135deg, var(--ink) 0%, var(--ink-soft) 100%);
+  box-shadow: var(--shadow-lg);
+}
+
+.stat-cell {
+  padding: 22px 20px;
+  text-align: center;
+  border-right: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.stat-cell .stat-label {
+  font-size: 0.8rem;
+  color: #94a3b8;
+  margin-top: 6px;
+}
+
+.stat-cell:last-child { border-right: none; }
+
+.stat-value {
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: 2.1rem;
+  line-height: 1;
+  letter-spacing: 0.01em;
+}
+
+/* Section label chip used across landing sections */
+.section-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--font-display);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  font-size: 0.85rem;
+  color: var(--accent-amber);
+}
+
+/* Elevated card hover for interactive cards */
+.lift-card {
+  transition: transform var(--transition-smooth), box-shadow var(--transition-smooth), border-color var(--transition-normal);
+}
+
+.lift-card:hover {
+  transform: translateY(-4px);
+  box-shadow: var(--shadow-lg);
+  border-color: var(--border-glow);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lift-card, .lift-card:hover { transform: none; }
 }
 
 /* Animations */
@@ -393,9 +505,9 @@ input, select, textarea {
 .modal-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(3, 7, 18, 0.82);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
+  background: rgba(15, 23, 42, 0.45);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -410,26 +522,60 @@ input, select, textarea {
 }
 
 @keyframes slideUp {
-  from {
+  0% {
     opacity: 0;
-    transform: translateY(20px) scale(0.97);
+    transform: translateY(32px) scale(0.95);
   }
-  to {
+  60% {
+    opacity: 1;
+  }
+  100% {
     opacity: 1;
     transform: translateY(0) scale(1);
   }
 }
 
 .modal-content {
-  background: #0d1527;
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  border-radius: var(--radius-xl);
-  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.75), 0 0 30px rgba(59, 130, 246, 0.15);
+  background: #ffffff;
+  border: 1px solid rgba(18, 19, 21, 0.2);
+  border-top: 3px solid #121315;
+  border-radius: 0;
+  box-shadow: var(--shadow-lg);
   width: 100%;
   max-width: 680px;
   max-height: 90vh;
   overflow-y: auto;
-  animation: slideUp 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  animation: slideUp 0.38s cubic-bezier(0.16, 1.1, 0.3, 1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .modal-content { animation: none; }
+  .modal-overlay { animation: none; }
+}
+
+/* ==========================================================================
+   HaulMatch Home Design Handoff Scoped Styles (.hm-page)
+   ========================================================================== */
+.hm-page a:hover {
+  color: #f0a23b;
+}
+
+.hm-page .hm-btn-amber {
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.hm-page .hm-btn-amber:hover {
+  background: #ffb85c !important;
+  color: #121315 !important;
+}
+
+.hm-page select option {
+  background: #121315;
+  color: #ffffff;
+}
+
+.hm-page input[type='range'] {
+  accent-color: #f0a23b;
 }
 
 /* ==========================================================================
@@ -444,7 +590,6 @@ input, select, textarea {
   body {
     background: #ffffff !important;
     color: #0f172a !important;
-    background-image: none !important;
   }
 
   header, footer, nav, button, .glass-panel, .badge {

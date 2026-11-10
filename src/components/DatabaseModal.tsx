@@ -5,9 +5,11 @@ import {
   Copy,
   Server,
   Check,
-  ExternalLink
+  ExternalLink,
+  UploadCloud
 } from 'lucide-react';
-import { getSupabaseConfig, setSupabaseCredentials } from '../services/supabase';
+import { getSupabaseConfig, setSupabaseCredentials, seedInitialDriversToSupabase } from '../services/supabase';
+import initSchemaSql from '../../supabase/migrations/20261104_init_schema.sql?raw';
 
 interface DatabaseModalProps {
   isOpen: boolean;
@@ -15,19 +17,48 @@ interface DatabaseModalProps {
   onConnectionChange: () => void;
 }
 
+const INK = '#121315';
+const DEEP = '#0c0d0f';
+const PAPER = '#f3f0e9';
+const AMBER = '#f0a23b';
+const AMBER_TEXT = '#b86d0e';
+const MUTED = '#5d5f63';
+const RULE = 'rgba(18, 19, 21, 0.14)';
+const DISPLAY = "'Barlow Condensed', sans-serif";
+const MONO = "'IBM Plex Mono', 'JetBrains Mono', monospace";
+
 export const DatabaseModal: React.FC<DatabaseModalProps> = ({ isOpen, onClose, onConnectionChange }) => {
   const currentConfig = getSupabaseConfig();
-  const [url, setUrl] = useState(currentConfig.url || '');
+  const [url, setUrl] = useState(currentConfig.url || 'https://qhjjvmarwhsqvpwuywhs.supabase.co');
   const [anonKey, setAnonKey] = useState('');
   const [copiedSql, setCopiedSql] = useState(false);
+  const [isSeeding, setIsSeeding] = useState(false);
   const [statusMessage, setStatusMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
   if (!isOpen) return null;
 
+  const handleSeedCloud = async () => {
+    setIsSeeding(true);
+    setStatusMessage(null);
+    const result = await seedInitialDriversToSupabase();
+    setIsSeeding(false);
+    if (result.success) {
+      setStatusMessage({
+        type: 'success',
+        text: `Seeded ${result.count} verified CDL drivers, video interviews, and retention milestones to live Supabase!`
+      });
+      onConnectionChange();
+    } else {
+      setStatusMessage({
+        type: 'error',
+        text: result.error || 'Seeding failed. Make sure you ran the SQL schema migration first.'
+      });
+    }
+  };
+
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
     if (!url || !anonKey) {
-      // Disconnect
       setSupabaseCredentials('', '');
       setStatusMessage({ type: 'success', text: 'Switched to Local Offline / Demo Storage.' });
       onConnectionChange();
@@ -36,7 +67,7 @@ export const DatabaseModal: React.FC<DatabaseModalProps> = ({ isOpen, onClose, o
 
     const success = setSupabaseCredentials(url.trim(), anonKey.trim());
     if (success) {
-      setStatusMessage({ type: 'success', text: 'Supabase connected successfully! Database & Video Storage are live.' });
+      setStatusMessage({ type: 'success', text: 'Supabase connected! Live PostgreSQL & Video Storage are active.' });
       onConnectionChange();
     } else {
       setStatusMessage({ type: 'error', text: 'Failed to connect. Please check your Supabase Project URL and Anon Key.' });
@@ -44,185 +75,237 @@ export const DatabaseModal: React.FC<DatabaseModalProps> = ({ isOpen, onClose, o
   };
 
   const copySqlMigration = () => {
-    const sqlPath = 'supabase/migrations/20261104_init_schema.sql';
-    navigator.clipboard.writeText(`-- Run this in your Supabase SQL Editor:
--- File located at: ${sqlPath}`);
+    navigator.clipboard.writeText(initSchemaSql);
     setCopiedSql(true);
-    setTimeout(() => setCopiedSql(false), 2000);
+    setTimeout(() => setCopiedSql(false), 2500);
   };
 
   return (
     <div className="modal-overlay" onClick={onClose}>
       <div
         className="modal-content"
-        style={{ maxWidth: '640px', padding: '28px' }}
+        style={{ maxWidth: '640px', padding: 0, overflow: 'hidden' }}
         onClick={(e) => e.stopPropagation()}
       >
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+        {/* Dark Architectural Header Strip */}
+        <div
+          style={{
+            background: DEEP,
+            color: '#fff',
+            padding: '18px 24px',
+            borderBottom: `1px solid ${RULE}`,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between'
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
             <div
               style={{
-                width: '40px',
-                height: '40px',
-                borderRadius: '10px',
-                background: currentConfig.isConfigured ? 'rgba(16, 185, 129, 0.2)' : 'rgba(59, 130, 246, 0.2)',
-                color: currentConfig.isConfigured ? '#10b981' : '#60a5fa',
+                width: '38px',
+                height: '38px',
+                background: 'rgba(240, 162, 59, 0.14)',
+                border: `1px solid ${AMBER}`,
+                color: AMBER,
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center'
               }}
             >
-              <Database size={22} />
+              <Database size={18} />
             </div>
             <div>
-              <h3 style={{ fontSize: '1.25rem', fontWeight: 700 }}>Database & Cloud Storage Setup</h3>
-              <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-                Connect live Supabase (PostgreSQL) and video storage or use local persistence.
-              </p>
+              <div style={{ fontFamily: MONO, fontSize: 10, letterSpacing: '0.1em', color: AMBER }}>
+                INFRASTRUCTURE // POSTGRESQL & R2 STORAGE
+              </div>
+              <h3
+                style={{
+                  fontFamily: DISPLAY,
+                  fontSize: '1.5rem',
+                  fontWeight: 800,
+                  textTransform: 'uppercase',
+                  color: '#fff',
+                  margin: 0
+                }}
+              >
+                Database & Cloud Storage Setup
+              </h3>
             </div>
           </div>
-          <button onClick={onClose} className="btn-icon">
-            <X size={18} />
-          </button>
-        </div>
-
-        {/* Current Connection Status Pill */}
-        <div
-          style={{
-            padding: '12px 16px',
-            borderRadius: 'var(--radius-md)',
-            background: currentConfig.isConfigured ? 'rgba(16, 185, 129, 0.12)' : 'rgba(59, 130, 246, 0.12)',
-            border: currentConfig.isConfigured ? '1px solid rgba(16, 185, 129, 0.3)' : '1px solid rgba(59, 130, 246, 0.3)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            marginBottom: '20px'
-          }}
-        >
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <span
-              style={{
-                width: '10px',
-                height: '10px',
-                borderRadius: '50%',
-                background: currentConfig.isConfigured ? '#10b981' : '#3b82f6',
-                boxShadow: currentConfig.isConfigured ? '0 0 10px #10b981' : '0 0 10px #3b82f6'
-              }}
-            />
-            <span style={{ fontSize: '0.85rem', fontWeight: 600, color: '#f8fafc' }}>
-              {currentConfig.isConfigured
-                ? `Live Supabase Connected (${currentConfig.url})`
-                : 'Local Offline Database Active (LocalStorage Mode)'}
-            </span>
-          </div>
-
-          <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-            {currentConfig.isConfigured ? 'PostgreSQL Active' : 'Zero Setup Mode'}
-          </span>
-        </div>
-
-        {/* Status Message Alert */}
-        {statusMessage && (
-          <div
+          <button
+            onClick={onClose}
             style={{
-              padding: '10px 14px',
-              borderRadius: '8px',
-              background: statusMessage.type === 'success' ? 'rgba(16, 185, 129, 0.15)' : 'rgba(239, 68, 68, 0.15)',
-              border: statusMessage.type === 'success' ? '1px solid rgba(16, 185, 129, 0.3)' : '1px solid rgba(239, 68, 68, 0.3)',
-              color: statusMessage.type === 'success' ? '#34d399' : '#f87171',
-              fontSize: '0.82rem',
-              marginBottom: '16px'
+              width: 34,
+              height: 34,
+              border: '1px solid rgba(255,255,255,0.2)',
+              background: 'transparent',
+              color: '#fff',
+              display: 'inline-flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              cursor: 'pointer'
             }}
           >
-            {statusMessage.text}
-          </div>
-        )}
+            <X size={16} />
+          </button>
+        </div>
 
-        {/* Credentials Form */}
-        <form onSubmit={handleSave} style={{ marginBottom: '24px' }}>
-          <div className="form-group" style={{ marginBottom: '14px' }}>
-            <label className="form-label">
-              <span>Supabase Project URL</span>
-              <a
-                href="https://supabase.com/dashboard"
-                target="_blank"
-                rel="noreferrer"
-                style={{ fontSize: '0.75rem', color: 'var(--text-highlight)', display: 'flex', alignItems: 'center', gap: '3px' }}
-              >
-                Get Keys <ExternalLink size={11} />
-              </a>
-            </label>
-            <input
-              type="text"
-              className="form-input"
-              placeholder="https://your-project-id.supabase.co"
-              value={url}
-              onChange={(e) => setUrl(e.target.value)}
-            />
+        <div style={{ padding: '24px 28px' }}>
+          {/* Current Connection Status Strip */}
+          <div
+            style={{
+              padding: '12px 16px',
+              background: currentConfig.isConfigured ? '#ecfdf5' : PAPER,
+              border: currentConfig.isConfigured ? '1px solid #a7f3d0' : `1px solid ${RULE}`,
+              borderLeft: `4px solid ${currentConfig.isConfigured ? '#059669' : AMBER}`,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              marginBottom: '20px'
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <span
+                style={{
+                  width: '9px',
+                  height: '9px',
+                  background: currentConfig.isConfigured ? '#059669' : AMBER_TEXT
+                }}
+              />
+              <span style={{ fontSize: '0.85rem', fontWeight: 700, color: INK }}>
+                {currentConfig.isConfigured
+                  ? `Live Supabase Connected (${currentConfig.url})`
+                  : 'Local Offline Database Active (LocalStorage Mode)'}
+              </span>
+            </div>
+
+            <span style={{ fontFamily: MONO, fontSize: 10, letterSpacing: '0.08em', color: MUTED, textTransform: 'uppercase' }}>
+              {currentConfig.isConfigured ? 'PostgreSQL Active' : 'Zero Setup Mode'}
+            </span>
           </div>
 
-          <div className="form-group" style={{ marginBottom: '18px' }}>
-            <label className="form-label">Supabase Anon Key (Public API Key)</label>
-            <input
-              type="password"
-              className="form-input"
-              placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
-              value={anonKey}
-              onChange={(e) => setAnonKey(e.target.value)}
-            />
-          </div>
+          {/* Status Message Alert */}
+          {statusMessage && (
+            <div
+              style={{
+                padding: '10px 14px',
+                background: statusMessage.type === 'success' ? '#ecfdf5' : '#fef2f2',
+                border: statusMessage.type === 'success' ? '1px solid #a7f3d0' : '1px solid #fecaca',
+                borderLeft: `3px solid ${statusMessage.type === 'success' ? '#059669' : '#dc2626'}`,
+                color: statusMessage.type === 'success' ? '#047857' : '#dc2626',
+                fontSize: '0.82rem',
+                marginBottom: '16px'
+              }}
+            >
+              {statusMessage.text}
+            </div>
+          )}
 
-          <div style={{ display: 'flex', justifyContent: 'space-between', gap: '10px' }}>
-            {currentConfig.isConfigured && (
+          {/* Credentials Form */}
+          <form onSubmit={handleSave} style={{ marginBottom: '24px' }}>
+            <div className="form-group" style={{ marginBottom: '14px' }}>
+              <label className="form-label">
+                <span>Supabase Project URL</span>
+                <a
+                  href="https://supabase.com/dashboard"
+                  target="_blank"
+                  rel="noreferrer"
+                  style={{ fontSize: '0.72rem', color: AMBER_TEXT, display: 'flex', alignItems: 'center', gap: '4px' }}
+                >
+                  Get Keys <ExternalLink size={11} />
+                </a>
+              </label>
+              <input
+                type="text"
+                className="form-input"
+                placeholder="https://your-project-id.supabase.co"
+                value={url}
+                onChange={(e) => setUrl(e.target.value)}
+              />
+            </div>
+
+            <div className="form-group" style={{ marginBottom: '18px' }}>
+              <label className="form-label">Supabase Anon Key (Public API Key)</label>
+              <input
+                type="password"
+                className="form-input"
+                placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+                value={anonKey}
+                onChange={(e) => setAnonKey(e.target.value)}
+              />
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'space-between', gap: '10px' }}>
+              {currentConfig.isConfigured && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setUrl('');
+                    setAnonKey('');
+                    setSupabaseCredentials('', '');
+                    onConnectionChange();
+                  }}
+                  className="btn-secondary"
+                  style={{ fontSize: '0.82rem' }}
+                >
+                  Disconnect & Use Local Mode
+                </button>
+              )}
+              <button type="submit" className="btn-primary" style={{ marginLeft: 'auto', padding: '11px 22px', fontSize: '0.9rem' }}>
+                Save & Connect Database →
+              </button>
+            </div>
+          </form>
+
+          {/* SQL Schema helper box */}
+          <div
+            style={{
+              borderTop: `1px solid ${RULE}`,
+              paddingTop: '18px'
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+              <span style={{ fontSize: '0.85rem', fontWeight: 700, color: INK, display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <Server size={15} color={AMBER_TEXT} /> 1-Click Full PostgreSQL Schema & RLS
+              </span>
+              <span style={{ fontFamily: MONO, fontSize: 10, color: MUTED }}>
+                supabase/migrations/20261104_init_schema.sql
+              </span>
+            </div>
+
+            <p style={{ fontSize: '0.8rem', color: MUTED, marginBottom: '12px', lineHeight: 1.5 }}>
+              Copies all 389 lines of SQL (`drivers`, `video_interviews`, `driver_documents`, `placement_contracts`,
+              `retention_milestones`, `fleet_job_orders`, `profiles`, Storage buckets, and RLS policies) to paste
+              directly into your Supabase <strong>SQL Editor</strong>.
+            </p>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
               <button
                 type="button"
-                onClick={() => {
-                  setUrl('');
-                  setAnonKey('');
-                  setSupabaseCredentials('', '');
-                  onConnectionChange();
-                }}
+                onClick={copySqlMigration}
                 className="btn-secondary"
-                style={{ fontSize: '0.82rem' }}
+                style={{ width: '100%', fontSize: '0.82rem', padding: '11px' }}
               >
-                Disconnect & Use Local Mode
+                {copiedSql ? <Check size={14} color="#059669" /> : <Copy size={14} />}
+                {copiedSql ? 'Full SQL Migration Copied to Clipboard!' : 'Step 1: Copy Full SQL Migration Schema (450+ Lines)'}
               </button>
-            )}
-            <button type="submit" className="btn-primary" style={{ marginLeft: 'auto', padding: '10px 20px', fontSize: '0.9rem' }}>
-              Save & Connect Database
-            </button>
+
+              {currentConfig.isConfigured && (
+                <button
+                  type="button"
+                  disabled={isSeeding}
+                  onClick={() => void handleSeedCloud()}
+                  className="btn-gold"
+                  style={{ width: '100%', fontSize: '0.82rem', padding: '11px' }}
+                >
+                  <UploadCloud size={15} />
+                  {isSeeding
+                    ? 'Seeding Initial Drivers & Contracts to Supabase...'
+                    : 'Step 2: Seed Initial Drivers & Contracts to Supabase'}
+                </button>
+              )}
+            </div>
           </div>
-        </form>
-
-        {/* SQL Schema helper box */}
-        <div
-          style={{
-            borderTop: '1px solid var(--border-subtle)',
-            paddingTop: '18px'
-          }}
-        >
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
-            <span style={{ fontSize: '0.85rem', fontWeight: 700, color: '#f8fafc', display: 'flex', alignItems: 'center', gap: '6px' }}>
-              <Server size={15} color="#38bdf8" /> 1-Click PostgreSQL Schema
-            </span>
-            <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-              supabase/migrations/20261104_init_schema.sql
-            </span>
-          </div>
-
-          <p style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', marginBottom: '12px', lineHeight: 1.45 }}>
-            To create the `drivers`, `video_interviews`, `placement_contracts`, and storage buckets in your Supabase project, run the migration file inside your Supabase <strong>SQL Editor</strong>.
-          </p>
-
-          <button
-            type="button"
-            onClick={copySqlMigration}
-            className="btn-secondary"
-            style={{ width: '100%', fontSize: '0.8rem', padding: '10px' }}
-          >
-            {copiedSql ? <Check size={14} color="#10b981" /> : <Copy size={14} />}
-            {copiedSql ? 'Schema File Path Copied!' : 'Copy SQL Migration Reference'}
-          </button>
         </div>
       </div>
     </div>

@@ -387,3 +387,72 @@ CREATE POLICY "Users can update their own profile"
 ON public.profiles FOR UPDATE
 USING (auth.uid() = id)
 WITH CHECK (auth.uid() = id);
+
+-- ============================================================================
+-- 10. Server-Side Blind Profile PII Masking View
+-- ============================================================================
+-- Masks driver PII (full_name, phone, email, license_number) at the PostgreSQL
+-- layer until either:
+--   (a) the driver's status is 'unlocked', 'placed', or 'milestone_90', OR
+--   (b) a signed `placement_contracts` row exists for `driver_id`, OR
+--   (c) the caller is an authenticated internal HaulMatch 'staff' user.
+CREATE OR REPLACE VIEW public.drivers_marketplace_view AS
+SELECT
+  d.id,
+  d.created_at,
+  d.updated_at,
+  d.anonymized_title,
+  d.city,
+  d.state,
+  d.zip,
+  d.cdl_class,
+  d.years_experience,
+  d.endorsements,
+  d.equipment,
+  d.preferred_routes,
+  d.hometime,
+  d.pay_expectation,
+  d.clean_mvr,
+  d.violations_last_3yrs,
+  d.dot_med_card_status,
+  d.dot_med_card_expiry,
+  d.bonus_eligible,
+  d.bonus_amount,
+  d.ai_fluency_score,
+  d.ai_summary,
+  d.status,
+  d.issuing_state,
+  d.cdl_expiration,
+  d.unlocked_at,
+  d.unlocked_by_carrier,
+  CASE
+    WHEN d.status IN ('unlocked', 'placed', 'milestone_90')
+      OR EXISTS (SELECT 1 FROM public.placement_contracts pc WHERE pc.driver_id = d.id)
+      OR EXISTS (SELECT 1 FROM public.profiles p WHERE p.id = auth.uid() AND p.role = 'staff')
+    THEN d.full_name
+    ELSE 'Protected Candidate (' || d.id || ')'
+  END AS full_name,
+  CASE
+    WHEN d.status IN ('unlocked', 'placed', 'milestone_90')
+      OR EXISTS (SELECT 1 FROM public.placement_contracts pc WHERE pc.driver_id = d.id)
+      OR EXISTS (SELECT 1 FROM public.profiles p WHERE p.id = auth.uid() AND p.role = 'staff')
+    THEN d.phone
+    ELSE SUBSTRING(d.phone FROM 1 FOR 5) || ' •••-••••'
+  END AS phone,
+  CASE
+    WHEN d.status IN ('unlocked', 'placed', 'milestone_90')
+      OR EXISTS (SELECT 1 FROM public.placement_contracts pc WHERE pc.driver_id = d.id)
+      OR EXISTS (SELECT 1 FROM public.profiles p WHERE p.id = auth.uid() AND p.role = 'staff')
+    THEN d.email
+    ELSE 'protected+' || LOWER(d.id) || '@haulmatch.ai'
+  END AS email,
+  CASE
+    WHEN d.status IN ('unlocked', 'placed', 'milestone_90')
+      OR EXISTS (SELECT 1 FROM public.placement_contracts pc WHERE pc.driver_id = d.id)
+      OR EXISTS (SELECT 1 FROM public.profiles p WHERE p.id = auth.uid() AND p.role = 'staff')
+    THEN d.license_number
+    ELSE d.issuing_state || '-••••••••'
+  END AS license_number
+FROM public.drivers d;
+
+GRANT SELECT ON public.drivers_marketplace_view TO anon, authenticated;

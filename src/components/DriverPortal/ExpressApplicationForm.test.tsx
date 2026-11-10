@@ -3,16 +3,6 @@ import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { ExpressApplicationForm } from './ExpressApplicationForm';
 
-// This suite covers the fix made alongside the real Tesseract.js OCR
-// implementation: the "Proceed to Video Interview" button used to
-// unconditionally force `cdlUploaded`/`medCardUploaded` to true regardless
-// of what OCR actually found, which made the OCR step purely cosmetic. It
-// must now stay disabled until both documents have genuinely passed OCR,
-// and it must surface OCR failures instead of silently succeeding.
-//
-// The OCR service itself (Tesseract.js reading an image) is mocked here —
-// that's covered by its own dedicated unit tests in services/ocr.test.ts —
-// so this suite can focus purely on how the form reacts to OCR results.
 vi.mock('../../services/ocr', () => ({
   runOcrOnDocument: vi.fn()
 }));

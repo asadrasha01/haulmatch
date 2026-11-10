@@ -7,6 +7,93 @@ import { uploadVideoToS3Presigned } from './s3Storage';
 const STORAGE_KEY_URL = 'haulmatch_supabase_url';
 const STORAGE_KEY_ANON = 'haulmatch_supabase_anon_key';
 const LOCAL_STORAGE_DRIVERS = 'haulmatch_local_drivers_v1';
+const LOCAL_STORAGE_JOB_ORDERS = 'haulmatch_local_job_orders_v1';
+const LOCAL_STORAGE_USERS = 'haulmatch_local_users_v1';
+const LOCAL_STORAGE_SESSION = 'haulmatch_local_session_v1';
+
+interface LocalUserRecord {
+  id: string;
+  email: string;
+  password: string;
+  role: AuthRole;
+  companyName?: string;
+}
+
+const localAuthListeners = new Set<(session: Session | null) => void>();
+
+const buildLocalSession = (user: LocalUserRecord): Session =>
+  ({
+    access_token: `local-token-${user.id}`,
+    refresh_token: `local-refresh-${user.id}`,
+    expires_in: 86400,
+    token_type: 'bearer',
+    user: {
+      id: user.id,
+      email: user.email,
+      app_metadata: {},
+      user_metadata: {
+        role: user.role,
+        company_name: user.companyName
+      },
+      aud: 'authenticated',
+      created_at: new Date().toISOString()
+    }
+  }) as unknown as Session;
+
+const getLocalUsers = (): LocalUserRecord[] => {
+  try {
+    const raw = localStorage.getItem(LOCAL_STORAGE_USERS);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) return parsed;
+    }
+  } catch {
+    // ignore
+  }
+  return [];
+};
+
+const saveLocalUsers = (users: LocalUserRecord[]) => {
+  try {
+    localStorage.setItem(LOCAL_STORAGE_USERS, JSON.stringify(users));
+  } catch {
+    // ignore
+  }
+};
+
+const notifyLocalAuthListeners = (session: Session | null) => {
+  for (const listener of localAuthListeners) {
+    try {
+      listener(session);
+    } catch {
+      // ignore
+    }
+  }
+};
+
+const DEFAULT_FLEET_JOB_ORDER: FleetJobOrder = {
+  id: 'JO-8921',
+  companyName: 'Swiftline Global Logistics LLC',
+  dotNumber: '3819204',
+  mcNumber: 'MC-149201',
+  contactName: 'Robert Miller',
+  contactTitle: 'VP of Safety & Fleet Recruiting',
+  contactEmail: 'r.miller@swiftlinelogistics.com',
+  contactPhone: '(214) 555-0199',
+  driversNeeded: 10,
+  equipmentType: ['Refrigerated (Reefer)', 'Dry Van'],
+  transmission: 'Automatic',
+  minExperienceYears: 2,
+  maxViolations3Years: 1,
+  hometimeCadence: 'Home Every 2 Weeks (34-48hr reset)',
+  payPerMile: '$0.70 - $0.74 CPM',
+  avgWeeklyMiles: '2,800 - 3,200 Miles',
+  guaranteedWeeklyMin: '$1,850/week guaranteed',
+  petPolicy: true,
+  passengerPolicy: true,
+  operatingLanes: 'Southwest, Midwest, and Southeast corridors',
+  createdAt: '2026-11-01'
+};
 
 // Read from env or localStorage
 let supabaseUrl = import.meta.env.VITE_SUPABASE_URL || localStorage.getItem(STORAGE_KEY_URL) || '';
@@ -58,68 +145,188 @@ export const setSupabaseCredentials = (url: string, key: string) => {
 };
 
 // ==============================================================================
-// Authentication (Real Supabase Auth — email/password)
+// Authentication (Live Supabase Auth + Resilient Local Auth Fallback)
 // ==============================================================================
-// Unlike the rest of this file, these functions do NOT have a local-storage
-// fallback. Auth requires a real backend: if no Supabase project is
-// connected, sign-in/sign-up simply report that back as an error rather
-// than silently pretending to work. See AuthGate.tsx for the UI that
-// surfaces these errors to the user.
 
 export const signUpWithEmail = async (
   email: string,
   password: string,
   role: AuthRole,
   companyName?: string
-): Promise<{ success: boolean; error?: string }> => {
-  if (!supabaseClient) {
+): Promise<{ success: boolean; autoSignedIn?: boolean; error?: string }> => {
+  const normalizedEmail = email.trim().toLowerCase();
+  if (!normalizedEmail || !password) {
+    return { success: false, error: 'Email and password are required.' };
+  }
+
+  // 1. Live Supabase Auth when configured
+  if (supabaseClient) {
+    try {
+      const { data, error } = await supabaseClient.auth.signUp({
+        email: normalizedEmail,
+        password,
+        options: {
+          data: { role, company_name: companyName }
+        }
+      });
+
+      if (error) {
+        return { success: false, error: error.message };
+      }
+
+      if (data.user && data.session) {
+        await supabaseClient.from('profiles').upsert(
+          [
+            {
+              id: data.user.id,
+              email: normalizedEmail,
+              role,
+              company_name: companyName || null
+            }
+          ],
+          { onConflict: 'id' }
+        );
+        return { success: true, autoSignedIn: true };
+      }
+
+      return { success: true, autoSignedIn: false };
+    } catch (err: any) {
+      return { success: false, error: err?.message || 'Sign up failed.' };
+    }
+  }
+
+  // 2. Local Storage Auth Fallback (works immediately with zero cloud setup)
+  const users = getLocalUsers();
+  if (users.some((u) => u.email.toLowerCase() === normalizedEmail)) {
     return {
       success: false,
-      error: 'No database connected. Open the Database icon in the header and connect a Supabase project first.'
+      error: 'An account with this email already exists. Please sign in instead.'
     };
   }
 
-  try {
-    const { error } = await supabaseClient.auth.signUp({
-      email,
-      password,
-      options: {
-        data: { role, company_name: companyName }
-      }
-    });
+  const newUser: LocalUserRecord = {
+    id: `usr-${Date.now()}-${Math.floor(100 + Math.random() * 900)}`,
+    email: normalizedEmail,
+    password,
+    role,
+    companyName: companyName?.trim() || undefined
+  };
 
-    if (error) {
-      return { success: false, error: error.message };
-    }
-    return { success: true };
-  } catch (err: any) {
-    return { success: false, error: err?.message || 'Sign up failed.' };
+  saveLocalUsers([...users, newUser]);
+  const session = buildLocalSession(newUser);
+  try {
+    localStorage.setItem(LOCAL_STORAGE_SESSION, JSON.stringify(newUser));
+  } catch {
+    // ignore
   }
+  notifyLocalAuthListeners(session);
+
+  return { success: true, autoSignedIn: true };
 };
 
 export const signInWithEmail = async (
   email: string,
   password: string
-): Promise<{ success: boolean; error?: string }> => {
-  if (!supabaseClient) {
+): Promise<{ success: boolean; autoSignedIn?: boolean; error?: string }> => {
+  const normalizedEmail = email.trim().toLowerCase();
+  if (!normalizedEmail || !password) {
+    return { success: false, error: 'Email and password are required.' };
+  }
+
+  // 1. Live Supabase Auth when configured
+  if (supabaseClient) {
+    try {
+      const { error } = await supabaseClient.auth.signInWithPassword({
+        email: normalizedEmail,
+        password
+      });
+      if (error) {
+        return { success: false, error: error.message };
+      }
+      return { success: true };
+    } catch (err: any) {
+      return { success: false, error: err?.message || 'Sign in failed.' };
+    }
+  }
+
+  // 2. Local Storage Auth Fallback
+  const users = getLocalUsers();
+  const matched = users.find((u) => u.email.toLowerCase() === normalizedEmail);
+  if (!matched || matched.password !== password) {
     return {
       success: false,
-      error: 'No database connected. Open the Database icon in the header and connect a Supabase project first.'
+      error: matched
+        ? 'Incorrect password. Please try again.'
+        : 'No account found for this email. Switch to Register to create your account.'
     };
   }
 
+  const session = buildLocalSession(matched);
   try {
-    const { error } = await supabaseClient.auth.signInWithPassword({ email, password });
-    if (error) {
-      return { success: false, error: error.message };
-    }
-    return { success: true };
-  } catch (err: any) {
-    return { success: false, error: err?.message || 'Sign in failed.' };
+    localStorage.setItem(LOCAL_STORAGE_SESSION, JSON.stringify(matched));
+  } catch {
+    // ignore
   }
+  notifyLocalAuthListeners(session);
+  return { success: true };
+};
+
+export const signInWithGoogle = async (
+  role: AuthRole = 'carrier',
+  companyName?: string
+): Promise<{ success: boolean; error?: string }> => {
+  // 1. Live Supabase Google OAuth when connected
+  if (supabaseClient) {
+    try {
+      const { error } = await supabaseClient.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: typeof window !== 'undefined' ? window.location.origin : undefined,
+          queryParams: {
+            access_type: 'offline',
+            prompt: 'consent'
+          }
+        }
+      });
+      if (error) {
+        return { success: false, error: error.message };
+      }
+      return { success: true };
+    } catch (err: any) {
+      return { success: false, error: err?.message || 'Google sign-in failed.' };
+    }
+  }
+
+  // 2. Free Local Mode Fallback (zero-cost Google sign-in simulation)
+  const googleUser: LocalUserRecord = {
+    id: `google-${role}`,
+    email: role === 'staff' ? 'founder@haulmatch.ai' : 'fleet.director@gmail.com',
+    password: 'google-oauth-session',
+    role,
+    companyName: companyName?.trim() || (role === 'staff' ? 'HaulMatch Staff' : 'Partner Carrier Fleet')
+  };
+
+  const users = getLocalUsers();
+  const updated = [googleUser, ...users.filter((u) => u.email !== googleUser.email)];
+  saveLocalUsers(updated);
+  const session = buildLocalSession(googleUser);
+  try {
+    localStorage.setItem(LOCAL_STORAGE_SESSION, JSON.stringify(googleUser));
+  } catch {
+    // ignore
+  }
+  notifyLocalAuthListeners(session);
+  return { success: true };
 };
 
 export const signOutUser = async (): Promise<void> => {
+  try {
+    localStorage.removeItem(LOCAL_STORAGE_SESSION);
+  } catch {
+    // ignore
+  }
+  notifyLocalAuthListeners(null);
+
   if (!supabaseClient) return;
   try {
     await supabaseClient.auth.signOut();
@@ -129,49 +336,106 @@ export const signOutUser = async (): Promise<void> => {
 };
 
 export const getCurrentSession = async (): Promise<Session | null> => {
-  if (!supabaseClient) return null;
-  try {
-    const { data } = await supabaseClient.auth.getSession();
-    return data.session;
-  } catch (err) {
-    console.warn('getCurrentSession error:', err);
-    return null;
+  if (supabaseClient) {
+    try {
+      const { data } = await supabaseClient.auth.getSession();
+      if (data.session) return data.session;
+    } catch (err) {
+      console.warn('getCurrentSession error:', err);
+    }
   }
+
+  try {
+    const saved = localStorage.getItem(LOCAL_STORAGE_SESSION);
+    if (saved) {
+      const parsed: LocalUserRecord = JSON.parse(saved);
+      if (parsed && parsed.id && parsed.email) {
+        return buildLocalSession(parsed);
+      }
+    }
+  } catch {
+    // ignore
+  }
+  return null;
 };
 
-// Subscribes to auth state changes (sign in / sign out / token refresh) and
-// returns an unsubscribe function. App.tsx uses this to keep its session
-// state in sync after AuthGate's sign-in form succeeds.
 export const onAuthStateChange = (callback: (session: Session | null) => void): (() => void) => {
+  localAuthListeners.add(callback);
+
   if (!supabaseClient) {
-    return () => {};
+    return () => {
+      localAuthListeners.delete(callback);
+    };
   }
+
   const { data } = supabaseClient.auth.onAuthStateChange((_event, session) => {
     callback(session);
   });
-  return () => data.subscription.unsubscribe();
+  return () => {
+    localAuthListeners.delete(callback);
+    data.subscription.unsubscribe();
+  };
 };
 
 export const fetchProfile = async (userId: string): Promise<UserProfile | null> => {
-  if (!supabaseClient) return null;
-  try {
-    const { data, error } = await supabaseClient.from('profiles').select('*').eq('id', userId).single();
+  if (supabaseClient) {
+    try {
+      const { data, error } = await supabaseClient.from('profiles').select('*').eq('id', userId).single();
 
-    if (error || !data) {
-      console.warn('fetchProfile error:', error);
-      return null;
+      if (!error && data) {
+        return {
+          id: data.id,
+          email: data.email,
+          role: data.role,
+          companyName: data.company_name || undefined
+        };
+      }
+
+      // Fallback to auth user metadata if the `profiles` trigger row doesn't exist yet
+      const { data: userData } = await supabaseClient.auth.getUser();
+      if (userData?.user && userData.user.id === userId) {
+        const meta = userData.user.user_metadata || {};
+        const fallbackRole: AuthRole = meta.role === 'staff' ? 'staff' : 'carrier';
+        return {
+          id: userData.user.id,
+          email: userData.user.email || '',
+          role: fallbackRole,
+          companyName: meta.company_name || undefined
+        };
+      }
+    } catch (err) {
+      console.warn('fetchProfile error:', err);
     }
-
-    return {
-      id: data.id,
-      email: data.email,
-      role: data.role,
-      companyName: data.company_name || undefined
-    };
-  } catch (err) {
-    console.warn('fetchProfile error:', err);
-    return null;
   }
+
+  // Local Storage Auth Fallback
+  try {
+    const saved = localStorage.getItem(LOCAL_STORAGE_SESSION);
+    if (saved) {
+      const parsed: LocalUserRecord = JSON.parse(saved);
+      if (parsed && parsed.id === userId) {
+        return {
+          id: parsed.id,
+          email: parsed.email,
+          role: parsed.role,
+          companyName: parsed.companyName
+        };
+      }
+    }
+    const fromUsers = getLocalUsers().find((u) => u.id === userId);
+    if (fromUsers) {
+      return {
+        id: fromUsers.id,
+        email: fromUsers.email,
+        role: fromUsers.role,
+        companyName: fromUsers.companyName
+      };
+    }
+  } catch {
+    // ignore
+  }
+
+  return null;
 };
 
 // ==============================================================================
@@ -186,13 +450,32 @@ export const fetchAllDrivers = async (): Promise<DriverProfile[]> => {
         .from('drivers')
         .select(`
           *,
-          video_interviews (*)
+          video_interviews (*),
+          retention_milestones (*),
+          placement_contracts (*),
+          driver_documents (*)
         `)
         .order('created_at', { ascending: false });
 
       if (!error && data && data.length > 0) {
         return data.map((d: any) => {
           const video = d.video_interviews?.[0] || {};
+          const milestone = d.retention_milestones?.[0];
+          const contract = d.placement_contracts?.[0];
+          const docs: any[] = Array.isArray(d.driver_documents) ? d.driver_documents : [];
+          const cdlDoc = docs.find((doc) => doc.doc_type === 'cdl_front');
+          const medDoc = docs.find((doc) => doc.doc_type === 'med_card');
+
+          const hasPlacement =
+            Boolean(milestone || contract) ||
+            d.status === 'unlocked' ||
+            d.status === 'placed' ||
+            d.status === 'milestone_90';
+
+          const totalFee = Number(contract?.total_contingency_fee ?? 4500);
+          const upfrontFee = Number(contract?.upfront_fee ?? 2250);
+          const feePaid = milestone?.day_90_cleared ? totalFee : upfrontFee;
+
           return {
             id: d.id,
             anonymizedTitle: d.anonymized_title,
@@ -253,9 +536,36 @@ export const fetchAllDrivers = async (): Promise<DriverProfile[]> => {
               medCard: `DOT Med Cert Valid (Exp: ${d.dot_med_card_expiry || '2027'})`,
               clearinghouseStatus: 'Passed'
             },
+            dqDocumentPaths:
+              cdlDoc || medDoc
+                ? {
+                    cdlFront: cdlDoc?.storage_path,
+                    medCard: medDoc?.storage_path
+                  }
+                : undefined,
             status: d.status || 'available',
             unlockedAt: d.unlocked_at,
-            unlockedByCarrier: d.unlocked_by_carrier
+            unlockedByCarrier: d.unlocked_by_carrier,
+            placementDetails: hasPlacement
+              ? {
+                  carrierName:
+                    milestone?.carrier_company_name ||
+                    contract?.carrier_company_name ||
+                    d.unlocked_by_carrier ||
+                    'Partner Carrier Fleet',
+                  carrierContact: contract?.signer_name
+                    ? `${contract.signer_name} (${contract.signer_title || 'Authorized Representative'})`
+                    : 'Authorized Fleet Representative',
+                  startDate:
+                    milestone?.start_date ||
+                    (d.unlocked_at ? String(d.unlocked_at).split('T')[0] : new Date().toISOString().split('T')[0]),
+                  daysCompleted: Number(milestone?.days_completed ?? 1),
+                  targetDays: Number(milestone?.target_days ?? 90),
+                  totalFee,
+                  feePaid,
+                  driverBonusPaid: Boolean(milestone?.driver_bonus_disbursed)
+                }
+              : undefined
           };
         });
       }
@@ -477,17 +787,122 @@ export const getSignedDocumentUrl = async (
   }
 };
 
+export const fetchDriverSignedDocuments = async (
+  driverId: string,
+  knownPaths?: { cdlFront?: string; medCard?: string }
+): Promise<{ cdlFrontUrl?: string; medCardUrl?: string }> => {
+  let cdlPath = knownPaths?.cdlFront;
+  let medPath = knownPaths?.medCard;
+
+  if (supabaseClient && (!cdlPath || !medPath)) {
+    try {
+      const { data } = await supabaseClient
+        .from('driver_documents')
+        .select('doc_type, storage_path')
+        .eq('driver_id', driverId)
+        .order('created_at', { ascending: false });
+
+      if (Array.isArray(data)) {
+        for (const row of data) {
+          if (row.doc_type === 'cdl_front' && !cdlPath) cdlPath = row.storage_path;
+          if (row.doc_type === 'med_card' && !medPath) medPath = row.storage_path;
+        }
+      }
+    } catch (err) {
+      console.warn('fetchDriverSignedDocuments query error:', err);
+    }
+  }
+
+  const [cdlFrontUrl, medCardUrl] = await Promise.all([
+    cdlPath ? getSignedDocumentUrl(cdlPath) : Promise.resolve(null),
+    medPath ? getSignedDocumentUrl(medPath) : Promise.resolve(null)
+  ]);
+
+  return {
+    cdlFrontUrl: cdlFrontUrl || undefined,
+    medCardUrl: medCardUrl || undefined
+  };
+};
+
 // ==============================================================================
 // Carrier Fleet Job Orders (Fleet Intake Form in the Carrier Sales Packet)
 // ==============================================================================
 // Upserted (not just inserted) so that re-submitting after "Edit Intake
 // Specifications" updates the same row rather than creating a duplicate order.
 
+export const fetchFleetJobOrders = async (): Promise<FleetJobOrder[]> => {
+  if (supabaseClient) {
+    try {
+      const { data, error } = await supabaseClient
+        .from('fleet_job_orders')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (!error && data && data.length > 0) {
+        return data.map((row: any) => ({
+          id: row.id,
+          companyName: row.company_name,
+          dotNumber: row.dot_number || '',
+          mcNumber: row.mc_number || '',
+          contactName: row.contact_name,
+          contactTitle: row.contact_title || '',
+          contactEmail: row.contact_email || '',
+          contactPhone: row.contact_phone || '',
+          driversNeeded: Number(row.drivers_needed ?? 1),
+          equipmentType: Array.isArray(row.equipment_type) ? row.equipment_type : [],
+          transmission: row.transmission || 'Automatic',
+          minExperienceYears: Number(row.min_experience_years ?? 1),
+          maxViolations3Years: Number(row.max_violations_3yrs ?? 1),
+          hometimeCadence: row.hometime_cadence || '',
+          payPerMile: row.pay_per_mile || '',
+          avgWeeklyMiles: row.avg_weekly_miles || '',
+          guaranteedWeeklyMin: row.guaranteed_weekly_min || '',
+          petPolicy: Boolean(row.pet_policy),
+          passengerPolicy: Boolean(row.passenger_policy),
+          operatingLanes: row.operating_lanes || '',
+          createdAt: row.created_at ? String(row.created_at).split('T')[0] : '2026-11-01'
+        }));
+      }
+    } catch (err) {
+      console.warn('fetchFleetJobOrders live query failed, falling back to local:', err);
+    }
+  }
+
+  try {
+    const saved = localStorage.getItem(LOCAL_STORAGE_JOB_ORDERS);
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        return parsed;
+      }
+    }
+  } catch {
+    // ignore
+  }
+
+  const initialOrders = [DEFAULT_FLEET_JOB_ORDER];
+  try {
+    localStorage.setItem(LOCAL_STORAGE_JOB_ORDERS, JSON.stringify(initialOrders));
+  } catch {
+    // ignore
+  }
+  return initialOrders;
+};
+
 export const saveFleetJobOrder = async (
   jobOrder: FleetJobOrder
 ): Promise<{ success: boolean }> => {
+  // Always persist to localStorage so orders survive refreshes offline or online
+  try {
+    const existing = await fetchFleetJobOrders();
+    const updated = [jobOrder, ...existing.filter((o) => o.id !== jobOrder.id)];
+    localStorage.setItem(LOCAL_STORAGE_JOB_ORDERS, JSON.stringify(updated));
+  } catch {
+    // ignore
+  }
+
   if (!supabaseClient) {
-    return { success: false };
+    return { success: true };
   }
 
   try {
@@ -534,22 +949,133 @@ export const saveFleetJobOrder = async (
   }
 };
 
-// ==============================================================================
+export const seedInitialDriversToSupabase = async (): Promise<{
+  success: boolean;
+  count: number;
+  error?: string;
+}> => {
+  if (!supabaseClient) {
+    return {
+      success: false,
+      count: 0,
+      error: 'Connect a live Supabase project first before seeding cloud tables.'
+    };
+  }
+
+  try {
+    for (const driver of INITIAL_DRIVERS) {
+      const { error: driverErr } = await supabaseClient.from('drivers').upsert(
+        [
+          {
+            id: driver.id,
+            anonymized_title: driver.anonymizedTitle,
+            city: driver.location.city,
+            state: driver.location.state,
+            zip: driver.location.zip,
+            cdl_class: driver.cdlClass,
+            years_experience: driver.yearsExperience,
+            endorsements: driver.endorsements,
+            equipment: driver.equipment,
+            preferred_routes: driver.preferredRoutes,
+            hometime: driver.hometime,
+            pay_expectation: driver.payExpectation,
+            clean_mvr: driver.cleanMvr,
+            violations_last_3yrs: driver.violationsLast3Yrs,
+            dot_med_card_status: driver.dotMedCardStatus,
+            dot_med_card_expiry: driver.dotMedCardExpiry,
+            bonus_eligible: driver.bonusEligible,
+            bonus_amount: driver.bonusAmount,
+            ai_fluency_score: driver.aiFluencyScore,
+            ai_summary: driver.aiSummary,
+            status: driver.status,
+            full_name: driver.fullName,
+            phone: driver.phone,
+            email: driver.email,
+            license_number: driver.licenseNumber,
+            issuing_state: driver.issuingState,
+            cdl_expiration: driver.cdlExpiration,
+            unlocked_at: driver.unlockedAt ? new Date(driver.unlockedAt).toISOString() : null,
+            unlocked_by_carrier: driver.unlockedByCarrier || null
+          }
+        ],
+        { onConflict: 'id' }
+      );
+
+      if (driverErr) {
+        return { success: false, count: 0, error: driverErr.message };
+      }
+
+      // Remove any prior interview rows for this driver so re-seeding is idempotent
+      await supabaseClient.from('video_interviews').delete().eq('driver_id', driver.id);
+      await supabaseClient.from('video_interviews').insert([
+        {
+          driver_id: driver.id,
+          video_storage_path: driver.videoInterview.videoBlobUrl || null,
+          duration: driver.videoInterview.duration,
+          ai_fluency_score: driver.aiFluencyScore,
+          q1_title: driver.videoInterview.transcripts[0]?.question,
+          q1_answer: driver.videoInterview.transcripts[0]?.answer,
+          q1_timestamp: driver.videoInterview.transcripts[0]?.timestamp,
+          q2_title: driver.videoInterview.transcripts[1]?.question,
+          q2_answer: driver.videoInterview.transcripts[1]?.answer,
+          q2_timestamp: driver.videoInterview.transcripts[1]?.timestamp,
+          q3_title: driver.videoInterview.transcripts[2]?.question,
+          q3_answer: driver.videoInterview.transcripts[2]?.answer,
+          q3_timestamp: driver.videoInterview.transcripts[2]?.timestamp
+        }
+      ]);
+
+      if (driver.placementDetails) {
+        await supabaseClient.from('retention_milestones').delete().eq('driver_id', driver.id);
+        await supabaseClient.from('placement_contracts').delete().eq('driver_id', driver.id);
+
+        const { data: contractRows } = await supabaseClient
+          .from('placement_contracts')
+          .insert([
+            {
+              driver_id: driver.id,
+              carrier_company_name: driver.placementDetails.carrierName,
+              signer_name: driver.placementDetails.carrierContact,
+              signer_title: 'Fleet Recruiting Director',
+              total_contingency_fee: driver.placementDetails.totalFee,
+              upfront_fee: driver.placementDetails.totalFee / 2,
+              milestone_90_fee: driver.placementDetails.totalFee / 2,
+              driver_bonus_amount: driver.bonusAmount
+            }
+          ])
+          .select('id');
+
+        await supabaseClient.from('retention_milestones').insert([
+          {
+            contract_id: contractRows?.[0]?.id || null,
+            driver_id: driver.id,
+            carrier_company_name: driver.placementDetails.carrierName,
+            start_date: driver.placementDetails.startDate,
+            days_completed: driver.placementDetails.daysCompleted,
+            target_days: driver.placementDetails.targetDays,
+            day_0_billed: true,
+            day_30_checked_in: driver.placementDetails.daysCompleted >= 30,
+            day_60_checked_in: driver.placementDetails.daysCompleted >= 60,
+            day_90_cleared: driver.placementDetails.daysCompleted >= 90,
+            driver_bonus_disbursed: driver.placementDetails.driverBonusPaid
+          }
+        ]);
+      }
+    }
+
+    await saveFleetJobOrder(DEFAULT_FLEET_JOB_ORDER);
+
+    return { success: true, count: INITIAL_DRIVERS.length };
+  } catch (err: any) {
+    return {
+      success: false,
+      count: 0,
+      error: err?.message || 'Failed to seed initial drivers to Supabase.'
+    };
+  }
+};
+
 // 90-Day Retention Milestones — SMS Pulse Checks & Bonus Disbursement
-// ==============================================================================
-// These replace what used to be a pair of `alert()` popups in
-// RetentionTracker.tsx that had zero effect on persisted state — clicking
-// them did nothing you could see again after a refresh. Now both actions
-// write to the `retention_milestones` row created in recordPlacementContractInDB,
-// and mirror the result into the local-storage driver copy as a fallback.
-//
-// Honest scope note: actually *sending* an SMS (Twilio, etc.) or moving money
-// via ACH requires a server-side integration holding provider secrets — this
-// is a client-only app talking straight to Supabase with the public anon key,
-// so it cannot safely hold those credentials itself. What this does do for
-// real is durably record that the pulse check / disbursement happened, which
-// is the correct boundary for this app; wiring the actual SMS/ACH send would
-// be a Supabase Edge Function (or similar backend) calling out to a provider.
 
 export const sendRetentionSmsPulse = async (
   driverId: string

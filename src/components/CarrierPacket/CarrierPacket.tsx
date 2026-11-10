@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   FileText,
   Printer,
@@ -12,7 +12,7 @@ import {
   TrendingUp,
   Briefcase
 } from 'lucide-react';
-import { saveFleetJobOrder } from '../../services/supabase';
+import { saveFleetJobOrder, fetchFleetJobOrders } from '../../services/supabase';
 import type { FleetJobOrder } from '../../types';
 
 const INITIAL_CREATED_DATE = new Date().toISOString().split('T')[0];
@@ -47,12 +47,24 @@ export const CarrierPacket: React.FC = () => {
   });
 
   const [jobOrderCreated, setJobOrderCreated] = useState(false);
-  // Tracks whether intakeData.id has been replaced with a real, freshly
-  // generated job order ID yet (it starts as the hardcoded demo value
-  // 'JO-8921'). Re-submitting after "Edit Intake Specifications" should
-  // update the same row rather than minting a new ID each time.
   const [idAssigned, setIdAssigned] = useState(false);
   const [isSavingOrder, setIsSavingOrder] = useState(false);
+  const [savedOrders, setSavedOrders] = useState<FleetJobOrder[]>([]);
+
+  useEffect(() => {
+    let active = true;
+    fetchFleetJobOrders()
+      .then((orders) => {
+        if (!active || orders.length === 0) return;
+        setSavedOrders(orders);
+        setIntakeData(orders[0]);
+        setIdAssigned(true);
+      })
+      .catch(() => {});
+    return () => {
+      active = false;
+    };
+  }, []);
 
   const elevatorPitch = `Hi [Carrier Name / Safety Director],
 
@@ -95,6 +107,8 @@ Can I send over our 1-page agreement and seats intake sheet so we can match your
     setIsSavingOrder(true);
     try {
       await saveFleetJobOrder(finalizedOrder);
+      const refreshed = await fetchFleetJobOrders();
+      setSavedOrders(refreshed);
     } catch (err) {
       console.warn('Fleet job order save failed:', err);
     } finally {
@@ -132,53 +146,52 @@ Can I send over our 1-page agreement and seats intake sheet so we can match your
         <div
           style={{
             display: 'flex',
-            gap: '6px',
-            background: 'rgba(255, 255, 255, 0.04)',
-            padding: '4px',
-            borderRadius: 'var(--radius-md)',
-            border: '1px solid var(--border-subtle)'
+            border: '1px solid #121315',
+            background: '#ffffff'
           }}
         >
           <button
             onClick={() => setActiveTab('rateCard')}
             style={{
-              padding: '8px 16px',
-              borderRadius: '8px',
-              fontSize: '0.85rem',
+              padding: '9px 16px',
+              borderRadius: 0,
+              fontSize: '0.84rem',
               fontWeight: 600,
-              background: activeTab === 'rateCard' ? 'var(--primary-gradient)' : 'transparent',
-              color: activeTab === 'rateCard' ? '#fff' : 'var(--text-secondary)'
+              background: activeTab === 'rateCard' ? '#121315' : 'transparent',
+              color: activeTab === 'rateCard' ? '#f0a23b' : 'var(--text-secondary)',
+              borderRight: '1px solid rgba(18,19,21,0.14)'
             }}
           >
-            <DollarSign size={15} style={{ display: 'inline', marginRight: '4px' }} /> Rate Card & Economics
+            <DollarSign size={14} style={{ display: 'inline', marginRight: '4px' }} /> Rate Card & Economics
           </button>
 
           <button
             onClick={() => setActiveTab('intakeForm')}
             style={{
-              padding: '8px 16px',
-              borderRadius: '8px',
-              fontSize: '0.85rem',
+              padding: '9px 16px',
+              borderRadius: 0,
+              fontSize: '0.84rem',
               fontWeight: 600,
-              background: activeTab === 'intakeForm' ? 'var(--primary-gradient)' : 'transparent',
-              color: activeTab === 'intakeForm' ? '#fff' : 'var(--text-secondary)'
+              background: activeTab === 'intakeForm' ? '#121315' : 'transparent',
+              color: activeTab === 'intakeForm' ? '#f0a23b' : 'var(--text-secondary)',
+              borderRight: '1px solid rgba(18,19,21,0.14)'
             }}
           >
-            <Briefcase size={15} style={{ display: 'inline', marginRight: '4px' }} /> Fleet Intake Order
+            <Briefcase size={14} style={{ display: 'inline', marginRight: '4px' }} /> Fleet Intake Order ({savedOrders.length || 1})
           </button>
 
           <button
             onClick={() => setActiveTab('agreement')}
             style={{
-              padding: '8px 16px',
-              borderRadius: '8px',
-              fontSize: '0.85rem',
+              padding: '9px 16px',
+              borderRadius: 0,
+              fontSize: '0.84rem',
               fontWeight: 600,
-              background: activeTab === 'agreement' ? 'var(--primary-gradient)' : 'transparent',
-              color: activeTab === 'agreement' ? '#fff' : 'var(--text-secondary)'
+              background: activeTab === 'agreement' ? '#121315' : 'transparent',
+              color: activeTab === 'agreement' ? '#f0a23b' : 'var(--text-secondary)'
             }}
           >
-            <FileText size={15} style={{ display: 'inline', marginRight: '4px' }} /> 1-Page Legal Agreement
+            <FileText size={14} style={{ display: 'inline', marginRight: '4px' }} /> 1-Page Legal Agreement
           </button>
         </div>
       </div>
@@ -197,9 +210,9 @@ Can I send over our 1-page agreement and seats intake sheet so we can match your
               marginBottom: '32px'
             }}
           >
-            <div className="glass-panel" style={{ padding: '24px', borderTop: '3px solid #3b82f6' }}>
+            <div className="glass-panel" style={{ padding: '24px', borderTop: '3px solid var(--primary)' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '12px' }}>
-                <div style={{ width: '40px', height: '40px', borderRadius: '10px', background: 'rgba(59, 130, 246, 0.15)', color: '#60a5fa', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <div style={{ width: '40px', height: '40px', borderRadius: '10px', background: '#eff6ff', color: 'var(--primary-light)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                   <DollarSign size={22} />
                 </div>
                 <div>
@@ -212,9 +225,9 @@ Can I send over our 1-page agreement and seats intake sheet so we can match your
               </p>
             </div>
 
-            <div className="glass-panel" style={{ padding: '24px', borderTop: '3px solid #10b981' }}>
+            <div className="glass-panel" style={{ padding: '24px', borderTop: '3px solid #059669' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '12px' }}>
-                <div style={{ width: '40px', height: '40px', borderRadius: '10px', background: 'rgba(16, 185, 129, 0.15)', color: '#34d399', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <div style={{ width: '40px', height: '40px', borderRadius: '10px', background: '#ecfdf5', color: '#047857', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                   <ShieldCheck size={22} />
                 </div>
                 <div>
@@ -227,9 +240,9 @@ Can I send over our 1-page agreement and seats intake sheet so we can match your
               </p>
             </div>
 
-            <div className="glass-panel" style={{ padding: '24px', borderTop: '3px solid #f59e0b' }}>
+            <div className="glass-panel" style={{ padding: '24px', borderTop: '3px solid #b45309' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '12px' }}>
-                <div style={{ width: '40px', height: '40px', borderRadius: '10px', background: 'rgba(245, 158, 11, 0.15)', color: '#fbbf24', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <div style={{ width: '40px', height: '40px', borderRadius: '10px', background: '#fff7ed', color: '#b45309', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                   <TrendingUp size={22} />
                 </div>
                 <div>
@@ -266,30 +279,30 @@ Can I send over our 1-page agreement and seats intake sheet so we can match your
                 <tbody>
                   <tr style={{ borderBottom: '1px solid var(--border-subtle)' }}>
                     <td style={{ padding: '14px 16px', fontWeight: 600 }}>Job Boards (Indeed / Tenstreet)</td>
-                    <td style={{ padding: '14px 16px', color: '#f87171' }}>$3,500 - $6,000/mo (No guarantee)</td>
+                    <td style={{ padding: '14px 16px', color: '#dc2626' }}>$3,500 - $6,000/mo (No guarantee)</td>
                     <td style={{ padding: '14px 16px', color: 'var(--text-secondary)' }}>Unfiltered leads, heavy phone tag</td>
-                    <td style={{ padding: '14px 16px', color: '#f87171' }}>None (0 days)</td>
+                    <td style={{ padding: '14px 16px', color: '#dc2626' }}>None (0 days)</td>
                     <td style={{ padding: '14px 16px', fontWeight: 700 }}>~$8,200+</td>
                   </tr>
 
                   <tr style={{ borderBottom: '1px solid var(--border-subtle)' }}>
                     <td style={{ padding: '14px 16px', fontWeight: 600 }}>Traditional Staffing Agency</td>
-                    <td style={{ padding: '14px 16px', color: '#fbbf24' }}>$5,000 - $7,500 per placement</td>
+                    <td style={{ padding: '14px 16px', color: '#b45309' }}>$5,000 - $7,500 per placement</td>
                     <td style={{ padding: '14px 16px', color: 'var(--text-secondary)' }}>Phone interview only</td>
                     <td style={{ padding: '14px 16px', color: 'var(--text-muted)' }}>30 days only</td>
                     <td style={{ padding: '14px 16px', fontWeight: 700 }}>~$6,500</td>
                   </tr>
 
-                  <tr style={{ background: 'rgba(59, 130, 246, 0.08)', borderLeft: '3px solid #3b82f6' }}>
-                    <td style={{ padding: '14px 16px', fontWeight: 700, color: '#38bdf8' }}>
+                  <tr style={{ background: '#eff6ff', borderLeft: '3px solid var(--primary)' }}>
+                    <td style={{ padding: '14px 16px', fontWeight: 700, color: 'var(--primary-light)' }}>
                       HaulMatch AI Contingency Network
                     </td>
-                    <td style={{ padding: '14px 16px', color: '#34d399', fontWeight: 700 }}>$0.00 Upfront Risk</td>
-                    <td style={{ padding: '14px 16px', color: '#f8fafc' }}>
+                    <td style={{ padding: '14px 16px', color: '#047857', fontWeight: 700 }}>$0.00 Upfront Risk</td>
+                    <td style={{ padding: '14px 16px', color: 'var(--text-primary)' }}>
                       Async Video + AI Fluency + Valid CDL/Med Card
                     </td>
-                    <td style={{ padding: '14px 16px', color: '#34d399', fontWeight: 700 }}>100% Free 90-Day Replacement</td>
-                    <td style={{ padding: '14px 16px', color: '#34d399', fontWeight: 800, fontSize: '1.05rem' }}>
+                    <td style={{ padding: '14px 16px', color: '#047857', fontWeight: 700 }}>100% Free 90-Day Replacement</td>
+                    <td style={{ padding: '14px 16px', color: '#047857', fontWeight: 800, fontSize: '1.05rem' }}>
                       $4,500 flat (Split milestone)
                     </td>
                   </tr>
@@ -302,24 +315,24 @@ Can I send over our 1-page agreement and seats intake sheet so we can match your
           <div className="glass-panel" style={{ padding: '24px' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px', flexWrap: 'wrap', gap: '10px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <Sparkles size={20} color="#f59e0b" />
+                <Sparkles size={20} color="#b45309" />
                 <h3 style={{ fontSize: '1.15rem', fontWeight: 700 }}>
                   Ready-to-Use Email / Phone Pitch Script (For Your Friend)
                 </h3>
               </div>
               <button onClick={copyPitchToClipboard} className="btn-secondary" style={{ fontSize: '0.82rem' }}>
-                {copiedPitch ? <Check size={14} color="#10b981" /> : <Copy size={14} />}
+                {copiedPitch ? <Check size={14} color="#059669" /> : <Copy size={14} />}
                 {copiedPitch ? 'Copied to Clipboard!' : 'Copy Pitch Script'}
               </button>
             </div>
 
             <pre
               style={{
-                background: 'rgba(3, 7, 18, 0.85)',
+                background: 'var(--bg-secondary)',
                 border: '1px solid var(--border-subtle)',
                 borderRadius: 'var(--radius-md)',
                 padding: '18px',
-                color: '#cbd5e1',
+                color: 'var(--text-secondary)',
                 fontSize: '0.82rem',
                 fontFamily: 'var(--font-mono)',
                 whiteSpace: 'pre-wrap',
@@ -344,8 +357,8 @@ Can I send over our 1-page agreement and seats intake sheet so we can match your
                   width: '64px',
                   height: '64px',
                   borderRadius: '50%',
-                  background: 'rgba(16, 185, 129, 0.2)',
-                  color: '#10b981',
+                  background: '#ecfdf5',
+                  color: '#059669',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
@@ -373,8 +386,82 @@ Can I send over our 1-page agreement and seats intake sheet so we can match your
             </div>
           ) : (
             <div className="glass-panel" style={{ padding: '32px' }}>
+              {savedOrders.length > 0 && (
+                <div
+                  style={{
+                    padding: '12px 16px',
+                    background: 'var(--bg-secondary)',
+                    border: '1px solid var(--border-subtle)',
+                    borderLeft: '3px solid #f0a23b',
+                    marginBottom: '20px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    flexWrap: 'wrap',
+                    gap: '10px'
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                    <span
+                      style={{
+                        fontFamily: 'var(--font-mono)',
+                        fontSize: '0.7rem',
+                        fontWeight: 700,
+                        letterSpacing: '0.06em',
+                        textTransform: 'uppercase',
+                        color: '#121315'
+                      }}
+                    >
+                      Saved Fleet Orders ({savedOrders.length}):
+                    </span>
+                    {savedOrders.map((order) => (
+                      <button
+                        key={order.id}
+                        type="button"
+                        onClick={() => {
+                          setIntakeData(order);
+                          setIdAssigned(true);
+                          setJobOrderCreated(false);
+                        }}
+                        style={{
+                          padding: '5px 10px',
+                          fontFamily: 'var(--font-mono)',
+                          fontSize: '0.72rem',
+                          background: intakeData.id === order.id && idAssigned ? '#121315' : '#ffffff',
+                          color: intakeData.id === order.id && idAssigned ? '#f0a23b' : '#121315',
+                          border: '1px solid #121315'
+                        }}
+                      >
+                        {order.id} · {order.companyName} ({order.driversNeeded})
+                      </button>
+                    ))}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const nextId = `JO-${Math.floor(1000 + Math.random() * 9000)}`;
+                      setIntakeData({
+                        ...intakeData,
+                        id: nextId,
+                        companyName: '',
+                        dotNumber: '',
+                        mcNumber: '',
+                        contactName: '',
+                        createdAt: INITIAL_CREATED_DATE
+                      });
+                      setIdAssigned(false);
+                      setJobOrderCreated(false);
+                    }}
+                    className="btn-secondary"
+                    style={{ padding: '6px 12px', fontSize: '0.75rem' }}
+                  >
+                    + New Fleet Order
+                  </button>
+                </div>
+              )}
+
               <div style={{ marginBottom: '24px' }}>
-                <span className="badge badge-blue" style={{ marginBottom: '6px' }}>Fleet Onboarding Form</span>
+                <span className="badge badge-blue" style={{ marginBottom: '6px' }}>Fleet Onboarding Form · #{intakeData.id}</span>
                 <h3 style={{ fontSize: '1.45rem', fontWeight: 800 }}>Carrier Fleet Intake & Driver Job Order</h3>
                 <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
                   Complete this form with the fleet safety director to lock in their exact hiring criteria, equipment requirements, and pay package.

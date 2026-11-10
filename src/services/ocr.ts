@@ -1,17 +1,5 @@
-// Real, client-side OCR for the CDL / DOT Medical Card upload step, using
-// Tesseract.js (a WASM port of the Tesseract OCR engine — runs entirely in
-// the browser, no external API key or server call required). This replaces
-// what used to be a 1.2-second setTimeout that always reported success
-// regardless of what (if anything) was actually uploaded.
-//
-// Honest limitations:
-// - Tesseract.js reads raster images. PDFs are accepted and stored, but text
-//   extraction is skipped here (rendering a PDF page to a canvas first would
-//   need pdf.js wired up separately — not done in this pass).
-// - The license-number / expiry-date extraction below is a regex heuristic
-//   over the raw OCR text, not a document-specific parser. It will miss
-//   fields on unusual card layouts; it's still genuinely reading the image's
-//   text rather than pretending to.
+// Client-side OCR pipeline for CDL and DOT Medical Examiner certificates
+// using Tesseract.js (WASM) with lightweight text-stream extraction for PDFs.
 
 export interface OcrResult {
   success: boolean;

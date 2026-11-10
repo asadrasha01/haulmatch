@@ -24,9 +24,7 @@ export const RetentionTracker: React.FC<RetentionTrackerProps> = ({ drivers }) =
   const [driverBonus, setDriverBonus] = useState<number>(1500);
   const [monthlyPlacements, setMonthlyPlacements] = useState<number>(15);
 
-  // Real persistence status for the SMS pulse check & bonus disbursement
-  // actions below, keyed by driver id. Replaces what used to be a pair of
-  // alert() popups with no lasting effect.
+  // Persistence state for SMS pulse checks and bonus disbursements
   const [smsStatus, setSmsStatus] = useState<Record<string, ActionStatus>>({});
   const [smsSentAt, setSmsSentAt] = useState<Record<string, string>>({});
   const [bonusStatus, setBonusStatus] = useState<Record<string, ActionStatus>>({});
@@ -89,7 +87,7 @@ export const RetentionTracker: React.FC<RetentionTrackerProps> = ({ drivers }) =
             display: 'grid',
             gridTemplateColumns: '1fr 1fr',
             gap: '12px',
-            background: 'rgba(15, 23, 42, 0.8)',
+            background: 'var(--bg-secondary)',
             padding: '16px',
             borderRadius: 'var(--radius-md)',
             border: '1px solid var(--border-subtle)'
@@ -97,13 +95,13 @@ export const RetentionTracker: React.FC<RetentionTrackerProps> = ({ drivers }) =
         >
           <div>
             <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Average Retention</div>
-            <div style={{ fontSize: '1.4rem', fontWeight: 800, color: '#10b981' }}>94.8%</div>
-            <div style={{ fontSize: '0.7rem', color: '#94a3b8' }}>Industry avg: ~20%</div>
+            <div style={{ fontSize: '1.4rem', fontWeight: 800, color: '#059669' }}>94.8%</div>
+            <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Industry avg: ~20%</div>
           </div>
           <div>
             <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Net Margin / Driver</div>
-            <div style={{ fontSize: '1.4rem', fontWeight: 800, color: '#f59e0b' }}>${netProfitPerDriver.toLocaleString()}</div>
-            <div style={{ fontSize: '0.7rem', color: '#94a3b8' }}>After $1.5k bonus</div>
+            <div style={{ fontSize: '1.4rem', fontWeight: 800, color: '#b45309' }}>${netProfitPerDriver.toLocaleString()}</div>
+            <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>After $1.5k bonus</div>
           </div>
         </div>
       </div>
@@ -114,14 +112,14 @@ export const RetentionTracker: React.FC<RetentionTrackerProps> = ({ drivers }) =
         style={{
           padding: '28px',
           marginBottom: '32px',
-          background: 'linear-gradient(180deg, rgba(15, 23, 42, 0.95) 0%, rgba(11, 17, 32, 0.98) 100%)',
+          background: 'var(--bg-secondary)',
           border: '1px solid var(--border-glow)'
         }}
       >
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px', flexWrap: 'wrap', gap: '10px' }}>
           <div>
-            <h3 style={{ fontSize: '1.25rem', fontWeight: 700, color: '#f8fafc', display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <TrendingUp size={20} color="#38bdf8" /> Placement Economics & Scalability Model
+            <h3 style={{ fontSize: '1.25rem', fontWeight: 700, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <TrendingUp size={20} color="var(--primary-light)" /> Placement Economics & Scalability Model
             </h3>
             <p style={{ fontSize: '0.82rem', color: 'var(--text-secondary)' }}>
               See how sharing a $1,500 bonus with the driver guarantees retention while leaving massive agency profit margins.
@@ -136,7 +134,7 @@ export const RetentionTracker: React.FC<RetentionTrackerProps> = ({ drivers }) =
             <div>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px', fontSize: '0.85rem' }}>
                 <span style={{ color: 'var(--text-secondary)' }}>Carrier Placement Bounty</span>
-                <strong style={{ color: '#f8fafc' }}>${carrierBounty.toLocaleString()}</strong>
+                <strong style={{ color: 'var(--text-primary)' }}>${carrierBounty.toLocaleString()}</strong>
               </div>
               <input
                 type="range"
@@ -145,7 +143,7 @@ export const RetentionTracker: React.FC<RetentionTrackerProps> = ({ drivers }) =
                 step={500}
                 value={carrierBounty}
                 onChange={(e) => setCarrierBounty(Number(e.target.value))}
-                style={{ width: '100%', accentColor: '#3b82f6', cursor: 'pointer' }}
+                style={{ width: '100%', accentColor: 'var(--primary)', cursor: 'pointer' }}
               />
               <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.7rem', color: 'var(--text-muted)' }}>
                 <span>$3,000 (Low)</span>
@@ -157,7 +155,7 @@ export const RetentionTracker: React.FC<RetentionTrackerProps> = ({ drivers }) =
             <div>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px', fontSize: '0.85rem' }}>
                 <span style={{ color: 'var(--text-secondary)' }}>Driver 90-Day Retention Cash Bonus</span>
-                <strong style={{ color: '#f59e0b' }}>${driverBonus.toLocaleString()}</strong>
+                <strong style={{ color: '#b45309' }}>${driverBonus.toLocaleString()}</strong>
               </div>
               <input
                 type="range"
@@ -166,7 +164,7 @@ export const RetentionTracker: React.FC<RetentionTrackerProps> = ({ drivers }) =
                 step={250}
                 value={driverBonus}
                 onChange={(e) => setDriverBonus(Number(e.target.value))}
-                style={{ width: '100%', accentColor: '#f59e0b', cursor: 'pointer' }}
+                style={{ width: '100%', accentColor: '#b45309', cursor: 'pointer' }}
               />
               <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.7rem', color: 'var(--text-muted)' }}>
                 <span>$1,000</span>
@@ -178,7 +176,7 @@ export const RetentionTracker: React.FC<RetentionTrackerProps> = ({ drivers }) =
             <div>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px', fontSize: '0.85rem' }}>
                 <span style={{ color: 'var(--text-secondary)' }}>Placements per Month</span>
-                <strong style={{ color: '#38bdf8' }}>{monthlyPlacements} Drivers / mo</strong>
+                <strong style={{ color: 'var(--primary-light)' }}>{monthlyPlacements} Drivers / mo</strong>
               </div>
               <input
                 type="range"
@@ -187,7 +185,7 @@ export const RetentionTracker: React.FC<RetentionTrackerProps> = ({ drivers }) =
                 step={1}
                 value={monthlyPlacements}
                 onChange={(e) => setMonthlyPlacements(Number(e.target.value))}
-                style={{ width: '100%', accentColor: '#06b6d4', cursor: 'pointer' }}
+                style={{ width: '100%', accentColor: '#0e7490', cursor: 'pointer' }}
               />
               <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.7rem', color: 'var(--text-muted)' }}>
                 <span>2 (Starting out)</span>
@@ -200,7 +198,7 @@ export const RetentionTracker: React.FC<RetentionTrackerProps> = ({ drivers }) =
           {/* Results Display Card */}
           <div
             style={{
-              background: 'rgba(3, 7, 18, 0.75)',
+              background: 'var(--bg-primary)',
               border: '1px solid var(--border-card)',
               borderRadius: 'var(--radius-lg)',
               padding: '24px',
@@ -213,10 +211,10 @@ export const RetentionTracker: React.FC<RetentionTrackerProps> = ({ drivers }) =
               <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '6px' }}>
                 Net Agency Margin per Placement
               </div>
-              <div style={{ fontSize: '2rem', fontWeight: 800, color: '#10b981', fontFamily: 'var(--font-heading)' }}>
+              <div style={{ fontSize: '2rem', fontWeight: 800, color: '#059669', fontFamily: 'var(--font-heading)' }}>
                 ${netProfitPerDriver.toLocaleString()}
               </div>
-              <p style={{ fontSize: '0.75rem', color: '#94a3b8', marginTop: '2px' }}>
+              <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '2px' }}>
                 (${carrierBounty} bounty - ${driverBonus} driver bonus - ${screeningCost} automated video/DQ cost)
               </p>
             </div>
@@ -224,11 +222,11 @@ export const RetentionTracker: React.FC<RetentionTrackerProps> = ({ drivers }) =
             <div style={{ borderTop: '1px solid var(--border-subtle)', paddingTop: '16px', marginTop: '16px' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
                 <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Monthly Net Income:</span>
-                <strong style={{ fontSize: '1.1rem', color: '#f8fafc' }}>${monthlyNetProfit.toLocaleString()}</strong>
+                <strong style={{ fontSize: '1.1rem', color: 'var(--text-primary)' }}>${monthlyNetProfit.toLocaleString()}</strong>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                 <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Annual Projected Net Profit:</span>
-                <strong style={{ fontSize: '1.25rem', color: '#f59e0b', fontWeight: 800 }}>${annualNetProfit.toLocaleString()}</strong>
+                <strong style={{ fontSize: '1.25rem', color: '#b45309', fontWeight: 800 }}>${annualNetProfit.toLocaleString()}</strong>
               </div>
             </div>
           </div>
@@ -273,7 +271,7 @@ export const RetentionTracker: React.FC<RetentionTrackerProps> = ({ drivers }) =
               className="glass-panel"
               style={{
                 padding: '24px',
-                border: isFinished ? '1px solid rgba(16, 185, 129, 0.4)' : '1px solid var(--border-card)'
+                border: isFinished ? '1px solid #a7f3d0' : '1px solid var(--border-card)'
               }}
             >
               <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: '16px', flexWrap: 'wrap', gap: '12px' }}>
@@ -282,26 +280,25 @@ export const RetentionTracker: React.FC<RetentionTrackerProps> = ({ drivers }) =
                     <span
                       style={{
                         fontFamily: 'var(--font-mono)',
-                        fontSize: '0.78rem',
+                        fontSize: '0.74rem',
                         fontWeight: 700,
-                        color: 'var(--primary-light)',
-                        background: 'rgba(59, 130, 246, 0.15)',
-                        padding: '2px 8px',
-                        borderRadius: '4px'
+                        color: '#ffffff',
+                        background: '#121315',
+                        padding: '2px 8px'
                       }}
                     >
                       {driver.id}
                     </span>
-                    <strong style={{ fontSize: '1.1rem', color: '#f8fafc' }}>{driver.fullName}</strong>
+                    <strong style={{ fontSize: '1.1rem', color: 'var(--text-primary)' }}>{driver.fullName}</strong>
                     <span className="badge badge-purple">{driver.cdlClass}</span>
                   </div>
                   <div style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>
-                    Carrier: <strong style={{ color: '#f8fafc' }}>{details.carrierName}</strong> ({details.carrierContact}) • Dispatched: {details.startDate}
+                    Carrier: <strong style={{ color: 'var(--text-primary)' }}>{details.carrierName}</strong> ({details.carrierContact}) • Dispatched: {details.startDate}
                   </div>
                 </div>
 
                 <div style={{ textAlign: 'right' }}>
-                  <div style={{ fontSize: '1.25rem', fontWeight: 800, color: isFinished ? '#10b981' : '#f59e0b' }}>
+                  <div style={{ fontSize: '1.25rem', fontWeight: 800, color: isFinished ? '#059669' : '#b45309' }}>
                     Day {details.daysCompleted} / {details.targetDays}
                   </div>
                   <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
@@ -315,9 +312,9 @@ export const RetentionTracker: React.FC<RetentionTrackerProps> = ({ drivers }) =
                 <div
                   style={{
                     width: '100%',
-                    height: '10px',
-                    borderRadius: '5px',
-                    background: 'rgba(255, 255, 255, 0.08)',
+                    height: '8px',
+                    background: 'var(--bg-secondary)',
+                    border: '1px solid var(--border-subtle)',
                     overflow: 'hidden'
                   }}
                 >
@@ -325,9 +322,7 @@ export const RetentionTracker: React.FC<RetentionTrackerProps> = ({ drivers }) =
                     style={{
                       width: `${progressPercent}%`,
                       height: '100%',
-                      background: isFinished
-                        ? 'linear-gradient(90deg, #10b981, #06b6d4)'
-                        : 'linear-gradient(90deg, #3b82f6, #f59e0b)',
+                      background: isFinished ? '#059669' : '#f0a23b',
                       transition: 'width 0.5s ease'
                     }}
                   />
@@ -347,7 +342,7 @@ export const RetentionTracker: React.FC<RetentionTrackerProps> = ({ drivers }) =
                 }}
               >
                 <div>
-                  <div style={{ color: '#10b981', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '4px' }}>
+                  <div style={{ color: '#059669', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '4px' }}>
                     <CheckCircle size={13} /> Day 0 (Orientation)
                   </div>
                   <div style={{ color: 'var(--text-muted)' }}>50% Fee Billed (${(details.totalFee / 2).toLocaleString()})</div>
@@ -356,7 +351,7 @@ export const RetentionTracker: React.FC<RetentionTrackerProps> = ({ drivers }) =
                 <div>
                   <div
                     style={{
-                      color: details.daysCompleted >= 30 ? '#10b981' : 'var(--text-muted)',
+                      color: details.daysCompleted >= 30 ? '#059669' : 'var(--text-muted)',
                       fontWeight: 700,
                       display: 'flex',
                       alignItems: 'center',
@@ -371,7 +366,7 @@ export const RetentionTracker: React.FC<RetentionTrackerProps> = ({ drivers }) =
                 <div>
                   <div
                     style={{
-                      color: details.daysCompleted >= 60 ? '#10b981' : 'var(--text-muted)',
+                      color: details.daysCompleted >= 60 ? '#059669' : 'var(--text-muted)',
                       fontWeight: 700,
                       display: 'flex',
                       alignItems: 'center',
@@ -386,7 +381,7 @@ export const RetentionTracker: React.FC<RetentionTrackerProps> = ({ drivers }) =
                 <div>
                   <div
                     style={{
-                      color: isFinished ? '#10b981' : '#f59e0b',
+                      color: isFinished ? '#059669' : '#b45309',
                       fontWeight: 700,
                       display: 'flex',
                       alignItems: 'center',
@@ -401,9 +396,9 @@ export const RetentionTracker: React.FC<RetentionTrackerProps> = ({ drivers }) =
 
               {/* Action Banner */}
               <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', flexWrap: 'wrap', gap: '10px' }}>
-                <div style={{ fontSize: '0.8rem', color: '#cbd5e1' }}>
+                <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
                   Carrier Invoiced: <strong>${details.feePaid.toLocaleString()} / ${details.totalFee.toLocaleString()}</strong> • Driver Bonus Status:{' '}
-                  <strong style={{ color: bonusPaid ? '#34d399' : '#fbbf24' }}>
+                  <strong style={{ color: bonusPaid ? '#047857' : '#b45309' }}>
                     {bonusPaid ? '✓ Disbursed ($1,500)' : 'Locked in Escrow ($1,500)'}
                   </strong>
                   {smsSentAt[driver.id] && (
@@ -412,7 +407,7 @@ export const RetentionTracker: React.FC<RetentionTrackerProps> = ({ drivers }) =
                     </div>
                   )}
                   {(smsFailed || bonusFailed) && (
-                    <div style={{ fontSize: '0.72rem', color: '#f87171', marginTop: '4px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                    <div style={{ fontSize: '0.72rem', color: '#dc2626', marginTop: '4px', display: 'flex', alignItems: 'center', gap: '4px' }}>
                       <AlertTriangle size={12} /> Couldn't record that action — please try again.
                     </div>
                   )}

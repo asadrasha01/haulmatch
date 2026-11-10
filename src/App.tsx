@@ -1,7 +1,13 @@
-import React, { useState, useEffect, Suspense, lazy } from 'react';
+import React, { useState, useEffect, useRef, Suspense, lazy } from 'react';
+import { AnimatePresence, motion } from 'framer-motion';
+import Lenis from 'lenis';
+import { gsap } from 'gsap';
+import { ScrollTrigger } from 'gsap/ScrollTrigger';
+
+gsap.registerPlugin(ScrollTrigger);
 import type { Session } from '@supabase/supabase-js';
 import { Header } from './components/Header';
-import { DriverHero } from './components/DriverPortal/DriverHero';
+import { DriverHome, type QuickStartPrefill } from './components/DriverHome/DriverHome';
 import { ExpressApplicationForm } from './components/DriverPortal/ExpressApplicationForm';
 import { INITIAL_DRIVERS } from './data/mockDrivers';
 
@@ -21,7 +27,7 @@ const CarrierPacket = lazy(() =>
 const DatabaseModal = lazy(() =>
   import('./components/DatabaseModal').then((m) => ({ default: m.DatabaseModal }))
 );
-import type { DriverProfile, UserRole, UserProfile as AuthedUserProfile } from './types';
+import type { AuthRole, DriverProfile, UserRole, UserProfile as AuthedUserProfile } from './types';
 import {
   fetchAllDrivers,
   saveDriverToDatabase,
@@ -45,12 +51,34 @@ export const App: React.FC = () => {
   const [drivers, setDrivers] = useState<DriverProfile[]>(INITIAL_DRIVERS);
   const [isSupabaseActive, setIsSupabaseActive] = useState<boolean>(isSupabaseConfigured());
   const [isDatabaseModalOpen, setIsDatabaseModalOpen] = useState<boolean>(false);
+  const [quickStartPrefill, setQuickStartPrefill] = useState<QuickStartPrefill | null>(null);
 
   // Real authentication state. 'driver' stays fully public; every other tab
-  // is gated on `session` + `profile` below (see isAuthorizedForRole).
-  const [session, setSession] = useState<Session | null>(null);
+  // is gated on `profile` below (see isAuthorizedForRole).
   const [profile, setProfile] = useState<AuthedUserProfile | null>(null);
   const [authLoading, setAuthLoading] = useState<boolean>(true);
+
+  // Lenis smooth scrolling, driven by GSAP's ticker so ScrollTrigger
+  // animations stay perfectly in sync with the smoothed scroll position.
+  const lenisRef = useRef<Lenis | null>(null);
+  useEffect(() => {
+    const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (prefersReducedMotion) return;
+
+    const lenis = new Lenis({ lerp: 0.12, smoothWheel: true });
+    lenisRef.current = lenis;
+
+    lenis.on('scroll', ScrollTrigger.update);
+    const tick = (time: number) => lenis.raf(time * 1000);
+    gsap.ticker.add(tick);
+    gsap.ticker.lagSmoothing(0);
+
+    return () => {
+      gsap.ticker.remove(tick);
+      lenis.destroy();
+      lenisRef.current = null;
+    };
+  }, []);
 
   // Load drivers on mount (from live Supabase or local storage fallback)
   useEffect(() => {
@@ -76,12 +104,11 @@ export const App: React.FC = () => {
 
     const applySession = async (nextSession: Session | null) => {
       if (!isMounted) return;
-      setSession(nextSession);
       if (nextSession) {
         const loadedProfile = await fetchProfile(nextSession.user.id);
         if (isMounted) setProfile(loadedProfile);
       } else {
-        setProfile(null);
+        setProfile((prev) => (prev?.id.startsWith('demo-') ? prev : null));
       }
     };
 
@@ -112,7 +139,12 @@ export const App: React.FC = () => {
   };
 
   // When a carrier signs the contingency placement agreement
-  const handleContractSigned = async (driverId: string, carrierName: string) => {
+  const handleContractSigned = async (
+    driverId: string,
+    carrierName: string,
+    signerName = 'Authorized Officer',
+    signerTitle = 'Recruiting Director'
+  ) => {
     // 1. Optimistic UI update
     setDrivers((prev) =>
       prev.map((d) => {
@@ -124,7 +156,7 @@ export const App: React.FC = () => {
             unlockedByCarrier: carrierName,
             placementDetails: {
               carrierName: carrierName,
-              carrierContact: 'Authorized Fleet Representative',
+              carrierContact: `${signerName} (${signerTitle})`,
               startDate: new Date().toISOString().split('T')[0],
               daysCompleted: 1,
               targetDays: 90,
@@ -139,64 +171,101 @@ export const App: React.FC = () => {
     );
 
     // 2. Persist to Supabase / Storage
-    await recordPlacementContractInDB(driverId, carrierName, 'Authorized Officer', 'Recruiting Director');
+    await recordPlacementContractInDB(driverId, carrierName, signerName, signerTitle);
   };
 
   const handleConnectionChanged = () => {
     setIsSupabaseActive(isSupabaseConfigured());
   };
 
+  const handleDemoAccess = (demoRole: AuthRole) => {
+    setProfile({
+      id: `demo-${demoRole}`,
+      email: demoRole === 'staff' ? 'staff@haulmatch.ai' : 'recruiting@swiftline.com',
+      role: demoRole,
+      companyName: demoRole === 'staff' ? 'HaulMatch Staff' : 'Swiftline Logistics'
+    });
+    if (demoRole === 'carrier' && currentRole !== 'carrier') {
+      setCurrentRole('carrier');
+    }
+  };
+
   const handleSignOut = async () => {
     await signOutUser();
+    setProfile(null);
     setCurrentRole('driver');
   };
 
-  // 'driver' is always open. Everything else requires a signed-in user;
-  // staff can reach every internal tab, while a signed-in carrier can only
-  // reach 'carrier' (the Carrier ATS) — the rest are internal HaulMatch
-  // tools (see also Header.tsx's showStaffOnlyTabs, which hides those nav
-  // buttons from carrier accounts entirely rather than show-then-deny).
+  // 'driver' is always open. Everything else requires a signed-in user (or
+  // sandbox demo profile); staff can reach every internal tab, while a
+  // carrier can only reach 'carrier' (the Carrier ATS).
   const isAuthorizedForRole = (role: UserRole): boolean => {
     if (role === 'driver') return true;
-    if (!session || !profile) return false;
+    if (!profile) return false;
     if (profile.role === 'staff') return true;
     return role === 'carrier';
   };
 
   const canAccessCurrentRole = isAuthorizedForRole(currentRole);
 
-  const scrollToApply = () => {
-    const el = document.getElementById('driver-application');
-    if (el) {
+  const scrollToId = (id: string) => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    if (lenisRef.current) {
+      lenisRef.current.scrollTo(el, { offset: -24, duration: 1.2 });
+    } else {
       el.scrollIntoView({ behavior: 'smooth' });
     }
   };
 
+  const handleQuickStart = (prefill: QuickStartPrefill) => {
+    setQuickStartPrefill({ ...prefill });
+    scrollToId('driver-application');
+  };
+
   return (
     <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
-      {/* Top Navigation */}
-      <Header
-        currentRole={currentRole}
-        onRoleChange={setCurrentRole}
-        activeDriverCount={drivers.filter((d) => d.status === 'available').length}
-        isSupabaseActive={isSupabaseActive}
-        onOpenDatabaseModal={() => setIsDatabaseModalOpen(true)}
-        profile={profile}
-        onSignOut={handleSignOut}
-      />
+      {/* Top Navigation — shown on internal/carrier views; DriverHome has its own public header */}
+      {currentRole !== 'driver' && (
+        <Header
+          currentRole={currentRole}
+          onRoleChange={setCurrentRole}
+          activeDriverCount={drivers.filter((d) => d.status === 'available').length}
+          isSupabaseActive={isSupabaseActive}
+          onOpenDatabaseModal={() => setIsDatabaseModalOpen(true)}
+          profile={profile}
+          onSignOut={handleSignOut}
+        />
+      )}
 
-      {/* Main Content Viewport */}
-      <main style={{ flex: 1, padding: '32px 24px' }}>
+      {/* Main Content Viewport — cross-fade/slide between role views */}
+      <main style={{ flex: 1, padding: currentRole === 'driver' ? 0 : '32px 24px' }}>
+        <AnimatePresence mode="wait" initial={false}>
+          <motion.div
+            key={currentRole}
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            transition={{ duration: 0.28, ease: [0.16, 1, 0.3, 1] }}
+          >
         {currentRole === 'driver' && (
-          <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
-            <DriverHero onStartApply={scrollToApply} />
-            <div id="driver-application">
+          <DriverHome
+            onCarrierLogin={() => setCurrentRole('carrier')}
+            onQuickStart={handleQuickStart}
+            scrollToId={scrollToId}
+            applicationSlot={
               <ExpressApplicationForm
+                key={
+                  quickStartPrefill
+                    ? `${quickStartPrefill.cdlClass}-${quickStartPrefill.yearsExperience}-${quickStartPrefill.zip}`
+                    : 'default'
+                }
+                prefill={quickStartPrefill}
                 onDriverRegistered={handleDriverRegistered}
                 onSwitchToCarrierView={() => setCurrentRole('carrier')}
               />
-            </div>
-          </div>
+            }
+          />
         )}
 
         {/* While the initial session check is still in flight, don't flash
@@ -218,6 +287,8 @@ export const App: React.FC = () => {
             <AuthGate
               context={currentRole as 'carrier' | 'tracker' | 'packet' | 'legal'}
               onBackToDriverView={() => setCurrentRole('driver')}
+              onOpenDatabaseModal={() => setIsDatabaseModalOpen(true)}
+              onDemoAccess={handleDemoAccess}
             />
           )}
 
@@ -240,6 +311,8 @@ export const App: React.FC = () => {
             <LegalBlueprint />
           )}
         </Suspense>
+          </motion.div>
+        </AnimatePresence>
       </main>
 
       {/* Database Settings Modal */}
@@ -253,83 +326,97 @@ export const App: React.FC = () => {
         </Suspense>
       )}
 
-      {/* Footer */}
-      <footer
-        style={{
-          borderTop: '1px solid var(--border-subtle)',
-          background: 'rgba(7, 11, 20, 0.95)',
-          padding: '32px 24px',
-          marginTop: 'auto'
-        }}
-      >
+      {/* Footer — shown on internal/carrier views; DriverHome includes its own handoff footer */}
+      {currentRole !== 'driver' && (
+        <footer
+          style={{
+            borderTop: '1px solid rgba(255, 255, 255, 0.1)',
+            background: '#0c0d0f',
+            padding: '28px clamp(20px, 4vw, 48px)',
+            marginTop: 'auto'
+          }}
+        >
         <div
           style={{
-            maxWidth: '1240px',
+            maxWidth: '1320px',
             margin: '0 auto',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
             flexWrap: 'wrap',
-            gap: '16px'
+            gap: '16px 32px'
           }}
         >
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
             <div
               style={{
                 width: '32px',
                 height: '32px',
-                borderRadius: '8px',
-                background: 'var(--primary-gradient)',
+                background: 'rgba(240, 162, 59, 0.14)',
+                border: '1px solid #f0a23b',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                color: '#fff'
+                color: '#f0a23b'
               }}
             >
-              <Truck size={18} />
+              <Truck size={16} />
             </div>
             <div>
-              <div style={{ fontSize: '0.9rem', fontWeight: 700, color: '#f8fafc' }}>
-                HaulMatch AI Recruiting Network LLC
+              <div
+                style={{
+                  fontFamily: "'Barlow Condensed', sans-serif",
+                  fontSize: '1.25rem',
+                  fontWeight: 800,
+                  letterSpacing: '0.02em',
+                  color: '#ffffff'
+                }}
+              >
+                HAULMATCH
               </div>
-              <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
-                Registered US Entity • FMCSA 49 CFR Part 391 & FCRA Compliant
+              <div
+                style={{
+                  fontFamily: "'IBM Plex Mono', monospace",
+                  fontSize: '0.68rem',
+                  letterSpacing: '0.06em',
+                  color: 'rgba(255, 255, 255, 0.5)'
+                }}
+              >
+                FMCSA 49 CFR PART 391 & FCRA COMPLIANT
               </div>
             </div>
           </div>
 
-          <div style={{ display: 'flex', gap: '20px', fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '20px', fontSize: '0.85rem', color: 'rgba(255, 255, 255, 0.65)' }}>
             <button
               onClick={() => setCurrentRole('driver')}
-              style={{ color: currentRole === 'driver' ? '#38bdf8' : 'inherit' }}
+              style={{ color: 'inherit' }}
             >
               Driver Application ($1.5k Bonus)
             </button>
             <button
               onClick={() => setCurrentRole('carrier')}
-              style={{ color: currentRole === 'carrier' ? '#38bdf8' : 'inherit' }}
+              style={{ color: currentRole === 'carrier' ? '#f0a23b' : 'inherit' }}
             >
               Carrier Talent Pool
             </button>
-            {/* Internal HaulMatch tools — hidden from signed-in carrier accounts,
-                same rule as Header.tsx's showStaffOnlyTabs. */}
             {(!profile || profile.role === 'staff') && (
               <>
                 <button
                   onClick={() => setCurrentRole('tracker')}
-                  style={{ color: currentRole === 'tracker' ? '#38bdf8' : 'inherit' }}
+                  style={{ color: currentRole === 'tracker' ? '#f0a23b' : 'inherit' }}
                 >
                   90-Day Retention Tracker
                 </button>
                 <button
                   onClick={() => setCurrentRole('packet')}
-                  style={{ color: currentRole === 'packet' ? '#38bdf8' : 'inherit' }}
+                  style={{ color: currentRole === 'packet' ? '#f0a23b' : 'inherit' }}
                 >
                   Carrier Sales Packet
                 </button>
                 <button
                   onClick={() => setCurrentRole('legal')}
-                  style={{ color: currentRole === 'legal' ? '#38bdf8' : 'inherit' }}
+                  style={{ color: currentRole === 'legal' ? '#f0a23b' : 'inherit' }}
                 >
                   Legal & Compliance
                 </button>
@@ -337,11 +424,19 @@ export const App: React.FC = () => {
             )}
           </div>
 
-          <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-            © {CURRENT_YEAR} HaulMatch AI. All rights reserved.
+          <div
+            style={{
+              fontFamily: "'IBM Plex Mono', monospace",
+              fontSize: '0.72rem',
+              letterSpacing: '0.06em',
+              color: 'rgba(255, 255, 255, 0.45)'
+            }}
+          >
+            © {CURRENT_YEAR} HAULMATCH AI
           </div>
         </div>
-      </footer>
+        </footer>
+      )}
     </div>
   );
 };

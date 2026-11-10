@@ -83,6 +83,10 @@ export interface DriverProfile {
     medCard: string;
     clearinghouseStatus: 'Passed' | 'Pending';
   };
+  dqDocumentPaths?: {
+    cdlFront?: string;
+    medCard?: string;
+  };
   status: 'available' | 'unlocked' | 'placed' | 'milestone_90';
   unlockedAt?: string;
   unlockedByCarrier?: string;

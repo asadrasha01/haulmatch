@@ -314,16 +314,16 @@ export const AsyncVideoRecorder: React.FC<AsyncVideoRecorderProps> = ({ onInterv
                 fontSize: '0.8rem',
                 fontWeight: 700,
                 background: completedQuestions.includes(q.id)
-                  ? 'rgba(16, 185, 129, 0.2)'
+                  ? '#d1fae5'
                   : idx === currentQuestionIndex
-                  ? 'rgba(59, 130, 246, 0.25)'
-                  : 'rgba(255, 255, 255, 0.05)',
+                  ? '#eff6ff'
+                  : 'var(--bg-secondary)',
                 color: completedQuestions.includes(q.id)
-                  ? '#34d399'
+                  ? '#047857'
                   : idx === currentQuestionIndex
-                  ? '#60a5fa'
+                  ? '#1d4ed8'
                   : 'var(--text-muted)',
-                border: idx === currentQuestionIndex ? '1px solid #3b82f6' : '1px solid var(--border-subtle)'
+                border: idx === currentQuestionIndex ? '1px solid var(--primary)' : '1px solid var(--border-subtle)'
               }}
             >
               {completedQuestions.includes(q.id) ? '✓' : `Q${idx + 1}`}
@@ -566,7 +566,7 @@ export const AsyncVideoRecorder: React.FC<AsyncVideoRecorderProps> = ({ onInterv
                 marginTop: '16px',
                 padding: '12px 14px',
                 borderRadius: 'var(--radius-md)',
-                background: 'rgba(15, 23, 42, 0.8)',
+                background: 'var(--bg-secondary)',
                 border: '1px solid var(--border-subtle)'
               }}
             >
@@ -645,7 +645,7 @@ export const AsyncVideoRecorder: React.FC<AsyncVideoRecorderProps> = ({ onInterv
           </div>
 
           <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '6px' }}>
-            <Award size={15} color="#f59e0b" />
+            <Award size={15} color="#b45309" />
             <span>AI English fluency & experience verification included</span>
           </div>
           </div>

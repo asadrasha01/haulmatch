@@ -11,7 +11,7 @@ import type { DriverProfile } from '../../types';
 interface PlacementContractModalProps {
   driver: DriverProfile | null;
   onClose: () => void;
-  onContractSigned: (driverId: string, carrierName: string) => void;
+  onContractSigned: (driverId: string, carrierName: string, signerName: string, signerTitle: string) => void;
 }
 
 export const PlacementContractModal: React.FC<PlacementContractModalProps> = ({
@@ -34,7 +34,7 @@ export const PlacementContractModal: React.FC<PlacementContractModalProps> = ({
     setIsSubmitting(true);
     setTimeout(() => {
       setIsSubmitting(false);
-      onContractSigned(driver.id, carrierCompany);
+      onContractSigned(driver.id, carrierCompany, repName, repTitle);
       confetti({
         particleCount: 120,
         spread: 80,
@@ -56,20 +56,20 @@ export const PlacementContractModal: React.FC<PlacementContractModalProps> = ({
               style={{
                 width: '40px',
                 height: '40px',
-                borderRadius: '10px',
-                background: 'rgba(245, 158, 11, 0.15)',
-                color: '#f59e0b',
+                background: '#121315',
+                borderTop: '2px solid #f0a23b',
+                color: '#f0a23b',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center'
               }}
             >
-              <FileCheck size={22} />
+              <FileCheck size={20} />
             </div>
             <div>
               <h3 style={{ fontSize: '1.2rem', fontWeight: 700 }}>Contingency Placement Agreement</h3>
               <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-                Unlock Candidate ID: <strong style={{ color: '#f8fafc' }}>{driver.id}</strong> ({driver.anonymizedTitle})
+                Unlock Candidate ID: <strong style={{ color: 'var(--text-primary)' }}>{driver.id}</strong> ({driver.anonymizedTitle})
               </p>
             </div>
           </div>
@@ -81,7 +81,7 @@ export const PlacementContractModal: React.FC<PlacementContractModalProps> = ({
         {/* Contract Terms Highlights Box */}
         <div
           style={{
-            background: 'rgba(15, 23, 42, 0.95)',
+            background: 'var(--bg-secondary)',
             border: '1px solid var(--border-card)',
             borderRadius: 'var(--radius-md)',
             padding: '16px',
@@ -94,7 +94,7 @@ export const PlacementContractModal: React.FC<PlacementContractModalProps> = ({
             <Shield size={15} /> Standard Contingency Fee & 90-Day Retention Terms
           </div>
 
-          <ul style={{ paddingLeft: '18px', color: '#cbd5e1', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+          <ul style={{ paddingLeft: '18px', color: 'var(--text-secondary)', display: 'flex', flexDirection: 'column', gap: '6px' }}>
             <li>
               <strong>Total Contingent Fee:</strong> $4,500 per successfully placed commercial driver.
             </li>
@@ -158,7 +158,7 @@ export const PlacementContractModal: React.FC<PlacementContractModalProps> = ({
             style={{
               padding: '12px 14px',
               borderRadius: '8px',
-              background: 'rgba(255, 255, 255, 0.03)',
+              background: 'var(--bg-secondary)',
               border: '1px solid var(--border-subtle)',
               marginBottom: '20px',
               display: 'flex',
@@ -173,7 +173,7 @@ export const PlacementContractModal: React.FC<PlacementContractModalProps> = ({
               onChange={(e) => setAgreedToTerms(e.target.checked)}
               style={{ marginTop: '3px', cursor: 'pointer', width: '16px', height: '16px' }}
             />
-            <label htmlFor="agreeCheck" style={{ fontSize: '0.8rem', color: '#cbd5e1', cursor: 'pointer' }}>
+            <label htmlFor="agreeCheck" style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', cursor: 'pointer' }}>
               I am an authorized officer of <strong>{carrierCompany || 'Carrier'}</strong>. I acknowledge and agree to the 90-day contingent placement fee of $4,500 and the 12-month non-circumvention terms.
             </label>
           </div>

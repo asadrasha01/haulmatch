@@ -1,4 +1,5 @@
-import { Truck, Users, BarChart3, Scale, DollarSign, Database, Briefcase, LogOut } from 'lucide-react';
+import React from 'react';
+import { Truck, Users, BarChart3, Scale, Database, Briefcase, LogOut } from 'lucide-react';
 import type { UserRole, UserProfile } from '../types';
 
 interface HeaderProps {
@@ -11,6 +12,21 @@ interface HeaderProps {
   onSignOut: () => void;
 }
 
+interface NavTab {
+  role: UserRole;
+  code: string;
+  label: string;
+  icon: React.ComponentType<{ size?: number | string }>;
+  staffOnly: boolean;
+}
+
+const INK = '#121315';
+const DEEP = '#0c0d0f';
+const AMBER = '#f0a23b';
+const DISPLAY = "'Barlow Condensed', sans-serif";
+const MONO = "'IBM Plex Mono', 'JetBrains Mono', monospace";
+const BODY_FONT = "'Barlow', system-ui, sans-serif";
+
 export const Header: React.FC<HeaderProps> = ({
   currentRole,
   onRoleChange,
@@ -20,257 +36,229 @@ export const Header: React.FC<HeaderProps> = ({
   profile,
   onSignOut
 }) => {
-  // Staff see every internal tab. Signed-out visitors also see every tab
-  // (clicking one routes them to AuthGate, which is how they discover these
-  // features exist). Signed-in carrier clients only get the Carrier ATS —
-  // the 90-Day Tracker, Carrier Sales Packet, and Legal tabs are internal
-  // HaulMatch tools, so they're hidden rather than shown-then-denied.
   const showStaffOnlyTabs = !profile || profile.role === 'staff';
+
+  const tabs: NavTab[] = [
+    { role: 'driver', code: '01', label: 'Drivers', icon: Truck, staffOnly: false },
+    { role: 'carrier', code: '02', label: `Carrier ATS (${activeDriverCount})`, icon: Users, staffOnly: false },
+    { role: 'tracker', code: '03', label: '90-Day Tracker', icon: BarChart3, staffOnly: true },
+    { role: 'packet', code: '04', label: 'Sales Packet', icon: Briefcase, staffOnly: true },
+    { role: 'legal', code: '05', label: 'Legal', icon: Scale, staffOnly: true }
+  ];
+
+  const visibleTabs = tabs.filter((t) => !t.staffOnly || showStaffOnlyTabs);
+
   return (
     <header
       style={{
         position: 'sticky',
         top: 0,
         zIndex: 50,
-        background: 'rgba(7, 11, 20, 0.85)',
-        backdropFilter: 'blur(16px)',
-        WebkitBackdropFilter: 'blur(16px)',
-        borderBottom: '1px solid var(--border-subtle)',
-        padding: '12px 24px'
+        background: 'rgba(12, 13, 15, 0.96)',
+        backdropFilter: 'blur(14px)',
+        WebkitBackdropFilter: 'blur(14px)',
+        borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
+        borderTop: `3px solid ${AMBER}`,
+        fontFamily: BODY_FONT
       }}
     >
       <div
         style={{
-          maxWidth: '1240px',
+          maxWidth: 1320,
           margin: '0 auto',
+          padding: '12px clamp(20px, 4vw, 48px)',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
           flexWrap: 'wrap',
-          gap: '12px'
+          gap: 16
         }}
       >
-        {/* Brand Logo */}
+        {/* Brand Logo — identical to DriverHome top bar */}
         <div
           onClick={() => onRoleChange('driver')}
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '12px',
-            cursor: 'pointer'
-          }}
+          style={{ display: 'flex', alignItems: 'baseline', gap: 10, cursor: 'pointer', color: '#fff' }}
         >
-          <div
+          <span
             style={{
-              width: '42px',
-              height: '42px',
-              borderRadius: '12px',
-              background: 'var(--primary-gradient)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              color: '#ffffff',
-              boxShadow: '0 4px 16px rgba(37, 99, 235, 0.45)'
+              fontFamily: DISPLAY,
+              fontWeight: 800,
+              fontSize: 26,
+              letterSpacing: '0.02em',
+              color: '#fff'
             }}
           >
-            <Truck size={24} />
-          </div>
-
-          <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <span style={{ fontSize: '1.25rem', fontWeight: 800, letterSpacing: '-0.02em', color: '#ffffff', fontFamily: 'var(--font-heading)' }}>
-                HaulMatch<span style={{ color: '#38bdf8' }}>.AI</span>
-              </span>
-              <span className="badge badge-emerald" style={{ fontSize: '0.65rem', padding: '2px 6px' }}>
-                LIVE
-              </span>
-            </div>
-            <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
-              US CDL-A Placement & 90-Day Retention Platform
-            </div>
-          </div>
+            HAULMATCH
+          </span>
+          <span
+            style={{
+              fontFamily: MONO,
+              fontSize: 11,
+              letterSpacing: '0.08em',
+              color: 'rgba(255, 255, 255, 0.55)'
+            }}
+          >
+            CDL-A
+          </span>
+          <span
+            style={{
+              fontFamily: MONO,
+              fontSize: 10,
+              letterSpacing: '0.1em',
+              textTransform: 'uppercase',
+              padding: '2px 7px',
+              background: 'rgba(240, 162, 59, 0.16)',
+              border: `1px solid ${AMBER}`,
+              color: AMBER,
+              marginLeft: 4
+            }}
+          >
+            PORTAL
+          </span>
         </div>
 
-        {/* Navigation Tabs / Role Switcher */}
+        {/* Architectural Navigation Tabs */}
         <nav
           style={{
             display: 'flex',
             alignItems: 'center',
-            background: 'rgba(255, 255, 255, 0.04)',
-            border: '1px solid var(--border-subtle)',
-            borderRadius: 'var(--radius-md)',
-            padding: '4px'
+            border: '1px solid rgba(255, 255, 255, 0.14)',
+            background: DEEP,
+            flexWrap: 'wrap'
           }}
         >
-          <button
-            onClick={() => onRoleChange('driver')}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '6px',
-              padding: '8px 14px',
-              borderRadius: '8px',
-              fontSize: '0.85rem',
-              fontWeight: 600,
-              background: currentRole === 'driver' ? 'var(--primary-gradient)' : 'transparent',
-              color: currentRole === 'driver' ? '#ffffff' : 'var(--text-secondary)',
-              boxShadow: currentRole === 'driver' ? '0 2px 10px rgba(37, 99, 235, 0.4)' : 'none'
-            }}
-          >
-            <Truck size={15} /> Driver Funnel ($1.5k Bonus)
-          </button>
-
-          <button
-            onClick={() => onRoleChange('carrier')}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '6px',
-              padding: '8px 14px',
-              borderRadius: '8px',
-              fontSize: '0.85rem',
-              fontWeight: 600,
-              background: currentRole === 'carrier' ? 'var(--primary-gradient)' : 'transparent',
-              color: currentRole === 'carrier' ? '#ffffff' : 'var(--text-secondary)',
-              boxShadow: currentRole === 'carrier' ? '0 2px 10px rgba(37, 99, 235, 0.4)' : 'none'
-            }}
-          >
-            <Users size={15} /> Carrier ATS ({activeDriverCount})
-          </button>
-
-          {showStaffOnlyTabs && (
-            <button
-              onClick={() => onRoleChange('tracker')}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '6px',
-                padding: '8px 14px',
-                borderRadius: '8px',
-                fontSize: '0.85rem',
-                fontWeight: 600,
-                background: currentRole === 'tracker' ? 'var(--primary-gradient)' : 'transparent',
-                color: currentRole === 'tracker' ? '#ffffff' : 'var(--text-secondary)',
-                boxShadow: currentRole === 'tracker' ? '0 2px 10px rgba(37, 99, 235, 0.4)' : 'none'
-              }}
-            >
-              <BarChart3 size={15} /> 90-Day Tracker & ROI
-            </button>
-          )}
-
-          {showStaffOnlyTabs && (
-            <button
-              onClick={() => onRoleChange('packet')}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '6px',
-                padding: '8px 14px',
-                borderRadius: '8px',
-                fontSize: '0.85rem',
-                fontWeight: 600,
-                background: currentRole === 'packet' ? 'var(--primary-gradient)' : 'transparent',
-                color: currentRole === 'packet' ? '#ffffff' : 'var(--text-secondary)',
-                boxShadow: currentRole === 'packet' ? '0 2px 10px rgba(37, 99, 235, 0.4)' : 'none'
-              }}
-            >
-              <Briefcase size={15} /> Carrier Sales Packet
-            </button>
-          )}
-
-          {showStaffOnlyTabs && (
-            <button
-              onClick={() => onRoleChange('legal')}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '6px',
-                padding: '8px 14px',
-                borderRadius: '8px',
-                fontSize: '0.85rem',
-                fontWeight: 600,
-                background: currentRole === 'legal' ? 'var(--primary-gradient)' : 'transparent',
-                color: currentRole === 'legal' ? '#ffffff' : 'var(--text-secondary)',
-                boxShadow: currentRole === 'legal' ? '0 2px 10px rgba(37, 99, 235, 0.4)' : 'none'
-              }}
-            >
-              <Scale size={15} /> Legal & FMCSA
-            </button>
-          )}
+          {visibleTabs.map((tab, idx) => {
+            const Icon = tab.icon;
+            const isActive = currentRole === tab.role;
+            return (
+              <button
+                key={tab.role}
+                onClick={() => onRoleChange(tab.role)}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 8,
+                  padding: '9px 15px',
+                  fontSize: 13,
+                  fontWeight: 600,
+                  color: isActive ? INK : 'rgba(255, 255, 255, 0.78)',
+                  background: isActive ? AMBER : 'transparent',
+                  borderRight:
+                    idx < visibleTabs.length - 1 ? '1px solid rgba(255, 255, 255, 0.1)' : 'none',
+                  borderRadius: 0,
+                  cursor: 'pointer',
+                  transition: 'background 0.15s ease, color 0.15s ease'
+                }}
+              >
+                <span
+                  style={{
+                    fontFamily: MONO,
+                    fontSize: 10,
+                    letterSpacing: '0.06em',
+                    color: isActive ? 'rgba(18, 19, 21, 0.65)' : 'rgba(255, 255, 255, 0.4)'
+                  }}
+                >
+                  {tab.code}
+                </span>
+                <Icon size={14} />
+                <span>{tab.label}</span>
+              </button>
+            );
+          })}
         </nav>
 
-        {/* Right CTA & DB Status */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-          {/* Signed-in account pill (only rendered once a profile has loaded) */}
+        {/* Right Controls: Account + DB Status + Driver Apply CTA */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
           {profile && (
             <div
               style={{
                 display: 'flex',
                 alignItems: 'center',
-                gap: '8px',
-                padding: '6px 6px 6px 12px',
-                borderRadius: 'var(--radius-full)',
-                background: 'rgba(255, 255, 255, 0.04)',
-                border: '1px solid var(--border-subtle)'
+                gap: 8,
+                padding: '6px 10px',
+                background: 'rgba(255, 255, 255, 0.06)',
+                border: '1px solid rgba(255, 255, 255, 0.16)'
               }}
             >
-              <span style={{ fontSize: '0.78rem', fontWeight: 600, color: 'var(--text-secondary)' }}>
+              <span
+                style={{
+                  fontFamily: MONO,
+                  fontSize: 11,
+                  letterSpacing: '0.05em',
+                  color: '#fff'
+                }}
+              >
                 {profile.companyName || profile.email}
-                <span style={{ color: 'var(--text-muted)', fontWeight: 500 }}>
+                <span style={{ color: AMBER }}>
                   {' '}
-                  · {profile.role === 'staff' ? 'Staff' : 'Carrier'}
+                  · {profile.role === 'staff' ? 'STAFF' : 'CARRIER'}
                 </span>
               </span>
               <button
                 onClick={onSignOut}
-                className="btn-icon"
                 title="Sign out"
-                style={{ display: 'flex', alignItems: 'center', gap: '4px' }}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  padding: '4px 6px',
+                  color: 'rgba(255, 255, 255, 0.7)',
+                  background: 'transparent',
+                  border: '1px solid rgba(255, 255, 255, 0.18)',
+                  borderRadius: 0,
+                  cursor: 'pointer'
+                }}
               >
-                <LogOut size={14} />
+                <LogOut size={13} />
               </button>
             </div>
           )}
 
-          {/* Database & Cloud Storage Pill Button */}
+          {/* Database & Cloud Storage Status */}
           <button
             onClick={onOpenDatabaseModal}
             style={{
               display: 'inline-flex',
               alignItems: 'center',
-              gap: '6px',
-              padding: '6px 12px',
-              borderRadius: 'var(--radius-full)',
-              background: isSupabaseActive ? 'rgba(16, 185, 129, 0.12)' : 'rgba(59, 130, 246, 0.12)',
-              border: isSupabaseActive ? '1px solid rgba(16, 185, 129, 0.35)' : '1px solid rgba(59, 130, 246, 0.35)',
-              fontSize: '0.78rem',
-              fontWeight: 600,
-              color: isSupabaseActive ? '#34d399' : '#60a5fa',
+              gap: 7,
+              padding: '8px 12px',
+              borderRadius: 0,
+              background: isSupabaseActive ? 'rgba(16, 185, 129, 0.14)' : 'rgba(255, 255, 255, 0.06)',
+              border: isSupabaseActive
+                ? '1px solid rgba(52, 211, 153, 0.45)'
+                : '1px solid rgba(255, 255, 255, 0.18)',
+              fontFamily: MONO,
+              fontSize: 11,
+              letterSpacing: '0.06em',
+              textTransform: 'uppercase',
+              color: isSupabaseActive ? '#34d399' : 'rgba(255, 255, 255, 0.82)',
               cursor: 'pointer'
             }}
-            title="Click to configure Supabase or Cloudflare R2 video storage"
+            title="Configure Supabase PostgreSQL or Cloudflare R2 video storage"
           >
             <Database size={13} />
-            <span>{isSupabaseActive ? 'Supabase Live' : 'Storage: Local'}</span>
+            <span>{isSupabaseActive ? 'Supabase: Live' : 'Storage: Local'}</span>
           </button>
 
-          {currentRole !== 'driver' ? (
-            <button
-              onClick={() => onRoleChange('driver')}
-              className="btn-gold"
-              style={{ padding: '8px 16px', fontSize: '0.85rem' }}
-            >
-              <DollarSign size={15} /> Driver Apply Demo
-            </button>
-          ) : (
-            <button
-              onClick={() => onRoleChange('carrier')}
-              className="btn-secondary"
-              style={{ padding: '8px 16px', fontSize: '0.85rem' }}
-            >
-              <Users size={15} /> Switch to Carrier View
-            </button>
-          )}
+          {/* Driver Apply CTA — matches DriverHome top bar CTA */}
+          <button
+            onClick={() => onRoleChange('driver')}
+            style={{
+              padding: '9px 16px',
+              background: AMBER,
+              color: INK,
+              fontWeight: 600,
+              fontSize: 14,
+              borderRadius: 0,
+              cursor: 'pointer',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 8
+            }}
+          >
+            <span>Driver Apply</span>
+            <span>→</span>
+          </button>
         </div>
       </div>
     </header>
