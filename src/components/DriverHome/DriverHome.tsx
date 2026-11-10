@@ -10,6 +10,7 @@ export interface QuickStartPrefill {
 interface DriverHomeProps {
   onCarrierLogin: () => void;
   onQuickStart: (prefill: QuickStartPrefill) => void;
+  onOpenStatusPortal?: () => void;
   scrollToId: (id: string) => void;
   applicationSlot: React.ReactNode;
 }
@@ -244,6 +245,7 @@ const mask = (s: string, n: number) => s.slice(0, n) + s.slice(n).replace(/[A-Za
 export const DriverHome: React.FC<DriverHomeProps> = ({
   onCarrierLogin,
   onQuickStart,
+  onOpenStatusPortal,
   scrollToId,
   applicationSlot
 }) => {
@@ -625,6 +627,15 @@ export const DriverHome: React.FC<DriverHomeProps> = ({
             >
               For carriers
             </a>
+            {onOpenStatusPortal && (
+              <a
+                href="#status"
+                onClick={(e) => { e.preventDefault(); onOpenStatusPortal(); }}
+                style={{ color: 'rgba(255,255,255,0.7)', fontSize: 14 }}
+              >
+                Track Status
+              </a>
+            )}
             <a
               href="#driver-application"
               onClick={anchor('driver-application')}

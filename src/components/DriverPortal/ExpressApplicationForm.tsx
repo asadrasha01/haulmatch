@@ -18,6 +18,7 @@ import type { QuickStartPrefill } from '../DriverHome/DriverHome';
 interface ExpressApplicationFormProps {
   onDriverRegistered: (newDriver: DriverProfile, videoBlob?: Blob) => Promise<void> | void;
   onSwitchToCarrierView: () => void;
+  onOpenStatusPortal?: (driverId: string) => void;
   prefill?: QuickStartPrefill | null;
 }
 
@@ -90,6 +91,7 @@ const loadDraftFromStorage = (): {
 export const ExpressApplicationForm: React.FC<ExpressApplicationFormProps> = ({
   onDriverRegistered,
   onSwitchToCarrierView,
+  onOpenStatusPortal,
   prefill
 }) => {
   const [initialDraftState] = useState(() => loadDraftFromStorage());
@@ -1164,6 +1166,28 @@ export const ExpressApplicationForm: React.FC<ExpressApplicationFormProps> = ({
                   <span>View Your Profile in Carrier ATS Portal</span>
                   <span>→</span>
                 </button>
+                {onOpenStatusPortal && (
+                  <button
+                    type="button"
+                    onClick={() => onOpenStatusPortal(registeredDriver.id)}
+                    style={{
+                      padding: '18px 22px',
+                      background: INK,
+                      color: AMBER,
+                      border: `1px solid ${INK}`,
+                      fontWeight: 600,
+                      fontSize: 15,
+                      borderRadius: 0,
+                      cursor: 'pointer',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: 8
+                    }}
+                  >
+                    <Sparkles size={16} color={AMBER} />
+                    <span>Track Live Status & Copy Link</span>
+                  </button>
+                )}
                 <button
                   type="button"
                   onClick={() => setStep(1)}

@@ -30,6 +30,9 @@ const AdminDashboard = lazy(() =>
 const DatabaseModal = lazy(() =>
   import('./components/DatabaseModal').then((m) => ({ default: m.DatabaseModal }))
 );
+const DriverStatusModal = lazy(() =>
+  import('./components/DriverPortal/DriverStatusModal').then((m) => ({ default: m.DriverStatusModal }))
+);
 import type { AuthRole, DriverProfile, UserRole, UserProfile as AuthedUserProfile } from './types';
 import {
   fetchAllDrivers,
@@ -54,7 +57,26 @@ export const App: React.FC = () => {
   const [drivers, setDrivers] = useState<DriverProfile[]>(INITIAL_DRIVERS);
   const [isSupabaseActive, setIsSupabaseActive] = useState<boolean>(isSupabaseConfigured());
   const [isDatabaseModalOpen, setIsDatabaseModalOpen] = useState<boolean>(false);
+  const [initialStatusState] = useState(() => {
+    if (typeof window === 'undefined') return { driverId: null, isOpen: false };
+    try {
+      const params = new URLSearchParams(window.location.search);
+      const statusParam = params.get('driverStatus');
+      return { driverId: statusParam, isOpen: Boolean(statusParam) };
+    } catch {
+      return { driverId: null, isOpen: false };
+    }
+  });
+  const [statusModalDriverId, setStatusModalDriverId] = useState<string | null>(initialStatusState.driverId);
+  const [isStatusModalOpen, setIsStatusModalOpen] = useState<boolean>(initialStatusState.isOpen);
   const [quickStartPrefill, setQuickStartPrefill] = useState<QuickStartPrefill | null>(null);
+
+  const handleOpenStatusModal = (driverId?: string) => {
+    if (driverId) {
+      setStatusModalDriverId(driverId);
+    }
+    setIsStatusModalOpen(true);
+  };
 
   // Real authentication state. 'driver' stays fully public; every other tab
   // is gated on `profile` below (see isAuthorizedForRole).
@@ -255,6 +277,7 @@ export const App: React.FC = () => {
           <DriverHome
             onCarrierLogin={() => setCurrentRole('carrier')}
             onQuickStart={handleQuickStart}
+            onOpenStatusPortal={() => handleOpenStatusModal()}
             scrollToId={scrollToId}
             applicationSlot={
               <ExpressApplicationForm
@@ -265,6 +288,7 @@ export const App: React.FC = () => {
                 }
                 prefill={quickStartPrefill}
                 onDriverRegistered={handleDriverRegistered}
+                onOpenStatusPortal={handleOpenStatusModal}
                 onSwitchToCarrierView={() => setCurrentRole('carrier')}
               />
             }
@@ -339,6 +363,19 @@ export const App: React.FC = () => {
         </Suspense>
       )}
 
+      {/* Driver Applicant Status & Magic Link Modal */}
+      {isStatusModalOpen && (
+        <Suspense fallback={null}>
+          <DriverStatusModal
+            drivers={drivers}
+            driverId={statusModalDriverId || undefined}
+            isOpen={isStatusModalOpen}
+            onClose={() => setIsStatusModalOpen(false)}
+            onSelectDriverId={(id) => setStatusModalDriverId(id)}
+          />
+        </Suspense>
+      )}
+
       {/* Footer — shown on internal/carrier views; DriverHome includes its own handoff footer */}
       {currentRole !== 'driver' && (
         <footer
@@ -406,6 +443,12 @@ export const App: React.FC = () => {
               style={{ color: 'inherit' }}
             >
               Driver Application ($1.5k Bonus)
+            </button>
+            <button
+              onClick={() => handleOpenStatusModal()}
+              style={{ color: isStatusModalOpen ? '#f0a23b' : 'inherit' }}
+            >
+              Driver Status Portal
             </button>
             <button
               onClick={() => setCurrentRole('carrier')}
