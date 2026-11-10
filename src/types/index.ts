@@ -6,11 +6,19 @@ export type UserRole = 'driver' | 'carrier' | 'packet' | 'tracker' | 'legal' | '
 // UserRole above, which is just which tab of the app is currently showing.
 export type AuthRole = 'staff' | 'carrier';
 
+export type CarrierVettingStatus = 'pending_review' | 'verified_mc' | 'rejected';
+
 export interface UserProfile {
   id: string;
   email: string;
   role: AuthRole;
   companyName?: string;
+  vettingStatus?: CarrierVettingStatus;
+  dotNumber?: string;
+  mcNumber?: string;
+  creditLineApproved?: boolean;
+  vettedAt?: string;
+  notes?: string;
 }
 
 export interface FleetJobOrder {

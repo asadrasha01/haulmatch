@@ -14,9 +14,13 @@ import {
   Send,
   Loader2,
   Clock,
-  FileText
+  FileText,
+  Download,
+  Plus,
+  Check,
+  Ban
 } from 'lucide-react';
-import type { DriverProfile, FleetJobOrder, UserProfile, ActivityEvent } from '../../types';
+import type { DriverProfile, FleetJobOrder, UserProfile, ActivityEvent, CarrierVettingStatus } from '../../types';
 import {
   fetchAllDrivers,
   fetchFleetJobOrders,
@@ -26,10 +30,19 @@ import {
   deleteFleetJobOrder,
   sendRetentionSmsPulse,
   disburseRetentionBonus,
-  seedInitialDriversToSupabase
+  seedInitialDriversToSupabase,
+  saveFleetJobOrder,
+  updateCarrierVettingStatus
 } from '../../services/supabase';
-import { fetchActivityEvents } from '../../services/activityEvents';
+import { fetchActivityEvents, logActivityEvent } from '../../services/activityEvents';
 import { PlacementInvoiceModal } from './PlacementInvoiceModal';
+import { DriverDossierModal } from './DriverDossierModal';
+import { CreateJobOrderModal } from './CreateJobOrderModal';
+import {
+  exportDriverPipelineCsv,
+  exportFleetJobOrdersCsv,
+  exportPlacementsLedgerCsv
+} from '../../utils/csvExport';
 
 interface AdminDashboardProps {
   onRefreshData?: () => void;
@@ -73,6 +86,10 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   const [candidateSearch, setCandidateSearch] = useState('');
   const [candidateStatusFilter, setCandidateStatusFilter] = useState<string>('all');
   const [selectedJobForMatch, setSelectedJobForMatch] = useState<FleetJobOrder | null>(null);
+  const [selectedDriverForDossier, setSelectedDriverForDossier] = useState<DriverProfile | null>(null);
+  const [isDossierModalOpen, setIsDossierModalOpen] = useState(false);
+  const [isCreateOrderModalOpen, setIsCreateOrderModalOpen] = useState(false);
+  const [userVettingFilter, setUserVettingFilter] = useState<'all' | 'pending' | 'verified' | 'staff'>('all');
   const [isSeeding, setIsSeeding] = useState(false);
   const [actionInProgress, setActionInProgress] = useState<string | null>(null);
 
@@ -189,6 +206,31 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     });
   }, [drivers, candidateSearch, candidateStatusFilter, selectedJobForMatch]);
 
+  // Filtered Auth Profiles & Carrier Vetting
+  const userStats = useMemo(() => {
+    const staff = profiles.filter((p) => p.role === 'staff').length;
+    const verified = profiles.filter((p) => p.role === 'carrier' && p.vettingStatus === 'verified_mc').length;
+    const pending = profiles.filter(
+      (p) => p.role === 'carrier' && (p.vettingStatus === 'pending_review' || !p.vettingStatus)
+    ).length;
+    return { staff, verified, pending };
+  }, [profiles]);
+
+  const filteredProfiles = useMemo(() => {
+    return profiles.filter((p) => {
+      if (userVettingFilter === 'pending') {
+        return p.role === 'carrier' && (p.vettingStatus === 'pending_review' || !p.vettingStatus);
+      }
+      if (userVettingFilter === 'verified') {
+        return p.role === 'carrier' && p.vettingStatus === 'verified_mc';
+      }
+      if (userVettingFilter === 'staff') {
+        return p.role === 'staff';
+      }
+      return true;
+    });
+  }, [profiles, userVettingFilter]);
+
   // Handlers
   const handleUpdateStatus = async (driverId: string, status: DriverProfile['status']) => {
     setActionInProgress(driverId);
@@ -268,6 +310,66 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
       if (onRefreshData) onRefreshData();
     } else {
       showNotification(res.error || 'Seeding failed', 'error');
+    }
+  };
+
+  const handleCreateJobOrder = async (newOrder: FleetJobOrder) => {
+    const res = await saveFleetJobOrder(newOrder);
+    if (res.success) {
+      setJobOrders((prev) => [newOrder, ...prev.filter((o) => o.id !== newOrder.id)]);
+      logActivityEvent(
+        'candidate_applied',
+        'Staff Admin',
+        newOrder.companyName,
+        `Dispatched new fleet requisition ${newOrder.id} (${newOrder.driversNeeded} seats, ${newOrder.equipmentType.join(', ')})`,
+        { orderId: newOrder.id, driversNeeded: newOrder.driversNeeded }
+      );
+      setActivityEvents(fetchActivityEvents());
+      showNotification(`Fleet job order ${newOrder.id} dispatched for ${newOrder.companyName}`);
+      if (onRefreshData) onRefreshData();
+    } else {
+      showNotification('Failed to create fleet job order', 'error');
+    }
+  };
+
+  const handleVerifyCarrier = async (userId: string, status: CarrierVettingStatus) => {
+    setActionInProgress(`vetting-${userId}`);
+    const res = await updateCarrierVettingStatus(userId, status);
+    setActionInProgress(null);
+    if (res.success) {
+      const user = profiles.find((p) => p.id === userId);
+      const targetName = user?.companyName || user?.email || userId;
+      const statusLabel =
+        status === 'verified_mc'
+          ? 'VERIFIED & CREDIT APPROVED'
+          : status === 'rejected'
+          ? 'SUSPENDED'
+          : 'PENDING REVIEW';
+
+      logActivityEvent(
+        'candidate_placed',
+        'Staff Admin',
+        targetName,
+        `Carrier account vetting status set to ${statusLabel}`,
+        { userId, status }
+      );
+      setActivityEvents(fetchActivityEvents());
+      setProfiles((prev) =>
+        prev.map((p) =>
+          p.id === userId
+            ? {
+                ...p,
+                vettingStatus: status,
+                creditLineApproved: status === 'verified_mc',
+                vettedAt: status === 'verified_mc' ? new Date().toISOString() : p.vettedAt
+              }
+            : p
+        )
+      );
+      showNotification(`Carrier ${targetName} marked ${statusLabel}`);
+      if (onRefreshData) onRefreshData();
+    } else {
+      showNotification(res.error || 'Failed to update carrier vetting status', 'error');
     }
   };
 
@@ -557,6 +659,24 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                 </button>
               </div>
             )}
+
+            <button
+              type="button"
+              onClick={() => exportDriverPipelineCsv(filteredCandidates)}
+              style={{
+                ...monoStyle(11, INK),
+                padding: '8px 14px',
+                background: '#fff',
+                border: `1px solid ${RULE}`,
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 6,
+                cursor: 'pointer'
+              }}
+            >
+              <Download size={12} />
+              <span>Export Pipeline (CSV)</span>
+            </button>
           </div>
 
           {/* Candidates Table */}
@@ -697,22 +817,48 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                         </td>
 
                         {/* Actions */}
-                        <td style={{ padding: '12px 14px', textAlign: 'right' }}>
-                          <button
-                            type="button"
-                            title="Delete candidate"
-                            disabled={isBusy}
-                            onClick={() => handleDeleteDriver(driver.id)}
-                            style={{
-                              padding: '5px 8px',
-                              background: 'transparent',
-                              border: '1px solid #fee2e2',
-                              color: '#dc2626',
-                              cursor: 'pointer'
-                            }}
-                          >
-                            <Trash2 size={13} />
-                          </button>
+                        <td style={{ padding: '12px 14px', textAlign: 'right', whiteSpace: 'nowrap' }}>
+                          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                            <button
+                              type="button"
+                              title="Inspect candidate video screening & DQ compliance"
+                              onClick={() => {
+                                setSelectedDriverForDossier(driver);
+                                setIsDossierModalOpen(true);
+                              }}
+                              style={{
+                                padding: '5px 10px',
+                                background: '#fff',
+                                border: `1px solid ${RULE}`,
+                                fontFamily: MONO,
+                                fontSize: 10,
+                                fontWeight: 600,
+                                cursor: 'pointer',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: 5,
+                                color: INK
+                              }}
+                            >
+                              <Video size={11} color={AMBER_TEXT} />
+                              <span>Dossier & Video</span>
+                            </button>
+                            <button
+                              type="button"
+                              title="Delete candidate"
+                              disabled={isBusy}
+                              onClick={() => handleDeleteDriver(driver.id)}
+                              style={{
+                                padding: '5px 8px',
+                                background: 'transparent',
+                                border: '1px solid #fee2e2',
+                                color: '#dc2626',
+                                cursor: 'pointer'
+                              }}
+                            >
+                              <Trash2 size={13} />
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     );
@@ -729,7 +875,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
           ========================================================================= */}
       {activeTab === 'orders' && (
         <div style={{ background: '#fff', border: `1px solid ${RULE}`, padding: '24px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20, flexWrap: 'wrap', gap: 14 }}>
             <div>
               <h3 style={{ fontFamily: DISPLAY, fontWeight: 800, fontSize: 24, margin: 0, textTransform: 'uppercase' }}>
                 Carrier Fleet Intake Orders
@@ -738,8 +884,45 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                 Live hiring requests submitted by fleet safety and recruiting directors.
               </p>
             </div>
-            <div style={{ fontFamily: MONO, fontSize: 11 }}>
-              Total Demand: <strong style={{ color: AMBER_TEXT }}>{metrics.totalOpenSeats} drivers needed</strong>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+              <div style={{ fontFamily: MONO, fontSize: 11, marginRight: 4 }}>
+                Total Demand: <strong style={{ color: AMBER_TEXT }}>{metrics.totalOpenSeats} drivers needed</strong>
+              </div>
+              <button
+                type="button"
+                onClick={() => exportFleetJobOrdersCsv(jobOrders)}
+                style={{
+                  ...monoStyle(11, INK),
+                  padding: '7px 12px',
+                  background: '#fff',
+                  border: `1px solid ${RULE}`,
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 6,
+                  cursor: 'pointer'
+                }}
+              >
+                <Download size={12} />
+                <span>Export Orders (CSV)</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setIsCreateOrderModalOpen(true)}
+                style={{
+                  ...monoStyle(11, INK),
+                  fontWeight: 700,
+                  padding: '7px 14px',
+                  background: AMBER,
+                  border: 'none',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 6,
+                  cursor: 'pointer'
+                }}
+              >
+                <Plus size={13} />
+                <span>+ New Fleet Requisition</span>
+              </button>
             </div>
           </div>
 
@@ -839,13 +1022,32 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
           ========================================================================= */}
       {activeTab === 'placements' && (
         <div style={{ background: '#fff', border: `1px solid ${RULE}`, padding: '24px' }}>
-          <div style={{ marginBottom: 20 }}>
-            <h3 style={{ fontFamily: DISPLAY, fontWeight: 800, fontSize: 24, margin: 0, textTransform: 'uppercase' }}>
-              Placements & Escrow Ledger
-            </h3>
-            <p style={{ margin: '4px 0 0', fontSize: 13, color: MUTED }}>
-              All placed candidates progressing through the 90-day retention warranty and cash bonus schedule.
-            </p>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20, flexWrap: 'wrap', gap: 12 }}>
+            <div>
+              <h3 style={{ fontFamily: DISPLAY, fontWeight: 800, fontSize: 24, margin: 0, textTransform: 'uppercase' }}>
+                Placements & Escrow Ledger
+              </h3>
+              <p style={{ margin: '4px 0 0', fontSize: 13, color: MUTED }}>
+                All placed candidates progressing through the 90-day retention warranty and cash bonus schedule.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => exportPlacementsLedgerCsv(drivers)}
+              style={{
+                ...monoStyle(11, INK),
+                padding: '7px 12px',
+                background: '#fff',
+                border: `1px solid ${RULE}`,
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 6,
+                cursor: 'pointer'
+              }}
+            >
+              <Download size={12} />
+              <span>Export Ledger (CSV)</span>
+            </button>
           </div>
 
           <div style={{ overflowX: 'auto' }}>
@@ -1101,60 +1303,283 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
       )}
 
       {/* =========================================================================
-          TAB 4: AUTH USERS & PROFILES
+          TAB 4: AUTH USERS & CARRIER VETTING QUEUE
           ========================================================================= */}
       {activeTab === 'users' && (
         <div style={{ background: '#fff', border: `1px solid ${RULE}`, padding: '24px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20, flexWrap: 'wrap', gap: 14 }}>
             <div>
               <h3 style={{ fontFamily: DISPLAY, fontWeight: 800, fontSize: 24, margin: 0, textTransform: 'uppercase' }}>
-                Platform Accounts & Access
+                Platform Accounts & Carrier Vetting Queue
               </h3>
               <p style={{ margin: '4px 0 0', fontSize: 13, color: MUTED }}>
-                Registered users authenticated through Supabase Auth and synced to the `public.profiles` table.
+                FMCSA motor carrier authority verification, credit line underwriting, and staff access controls.
               </p>
             </div>
             <div style={monoStyle(11)}>
-              Total Users: <strong>{profiles.length}</strong>
+              Total Users: <strong>{profiles.length}</strong> · <span style={{ color: '#047857' }}>{userStats.verified} Verified</span> · <span style={{ color: AMBER_TEXT }}>{userStats.pending} Pending</span>
             </div>
+          </div>
+
+          {/* Vetting Filter Pills */}
+          <div style={{ display: 'flex', gap: 8, marginBottom: 18, flexWrap: 'wrap' }}>
+            {[
+              { key: 'all', label: `All Accounts (${profiles.length})` },
+              { key: 'pending', label: `Pending Review (${userStats.pending})` },
+              { key: 'verified', label: `Verified MC Carriers (${userStats.verified})` },
+              { key: 'staff', label: `Staff Only (${userStats.staff})` }
+            ].map((f) => {
+              const isSelected = userVettingFilter === f.key;
+              return (
+                <button
+                  key={f.key}
+                  type="button"
+                  onClick={() => setUserVettingFilter(f.key as any)}
+                  style={{
+                    padding: '6px 12px',
+                    fontFamily: MONO,
+                    fontSize: 11,
+                    fontWeight: isSelected ? 700 : 500,
+                    background: isSelected ? INK : '#f8fafc',
+                    color: isSelected ? '#fff' : INK,
+                    border: `1px solid ${isSelected ? INK : RULE}`,
+                    cursor: 'pointer'
+                  }}
+                >
+                  {f.label}
+                </button>
+              );
+            })}
           </div>
 
           <div style={{ overflowX: 'auto' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: 13 }}>
               <thead>
                 <tr style={{ background: '#f8fafc', borderBottom: `2px solid ${INK}` }}>
-                  <th style={{ padding: '10px 14px', ...monoStyle(10, INK) }}>User Email</th>
+                  <th style={{ padding: '10px 14px', ...monoStyle(10, INK) }}>User Account & ID</th>
                   <th style={{ padding: '10px 14px', ...monoStyle(10, INK) }}>Role</th>
-                  <th style={{ padding: '10px 14px', ...monoStyle(10, INK) }}>Company / Org</th>
-                  <th style={{ padding: '10px 14px', ...monoStyle(10, INK) }}>User ID</th>
+                  <th style={{ padding: '10px 14px', ...monoStyle(10, INK) }}>Fleet Organization & FMCSA</th>
+                  <th style={{ padding: '10px 14px', ...monoStyle(10, INK) }}>Authority & Credit Status</th>
+                  <th style={{ padding: '10px 14px', ...monoStyle(10, INK), textAlign: 'right' }}>Vetting Operations</th>
                 </tr>
               </thead>
               <tbody>
-                {profiles.map((profile) => (
-                  <tr key={profile.id} style={{ borderBottom: `1px solid ${RULE}` }}>
-                    <td style={{ padding: '12px 14px' }}>
-                      <strong style={{ fontSize: 14 }}>{profile.email}</strong>
-                    </td>
-                    <td style={{ padding: '12px 14px' }}>
-                      <span
-                        style={{
-                          ...monoStyle(10, profile.role === 'staff' ? '#047857' : '#1d4ed8'),
-                          padding: '3px 8px',
-                          background: profile.role === 'staff' ? '#ecfdf5' : '#eff6ff',
-                          border: `1px solid ${profile.role === 'staff' ? '#a7f3d0' : '#bfdbfe'}`
-                        }}
-                      >
-                        {profile.role.toUpperCase()}
-                      </span>
-                    </td>
-                    <td style={{ padding: '12px 14px' }}>
-                      {profile.companyName || '—'}
-                    </td>
-                    <td style={{ padding: '12px 14px', fontFamily: MONO, fontSize: 11, color: MUTED }}>
-                      {profile.id}
+                {filteredProfiles.length === 0 ? (
+                  <tr>
+                    <td colSpan={5} style={{ padding: '36px', textAlign: 'center', color: MUTED }}>
+                      No accounts found matching this vetting filter.
                     </td>
                   </tr>
-                ))}
+                ) : (
+                  filteredProfiles.map((profile) => {
+                    const isBusy = actionInProgress === `vetting-${profile.id}`;
+                    const isStaff = profile.role === 'staff';
+                    const isVerified = profile.vettingStatus === 'verified_mc';
+                    const isRejected = profile.vettingStatus === 'rejected';
+
+                    return (
+                      <tr key={profile.id} style={{ borderBottom: `1px solid ${RULE}` }}>
+                        {/* Account & ID */}
+                        <td style={{ padding: '12px 14px' }}>
+                          <strong style={{ fontSize: 14 }}>{profile.email}</strong>
+                          <div style={{ fontFamily: MONO, fontSize: 10, color: MUTED, marginTop: 2 }}>
+                            {profile.id}
+                          </div>
+                        </td>
+
+                        {/* Role */}
+                        <td style={{ padding: '12px 14px' }}>
+                          <span
+                            style={{
+                              ...monoStyle(10, isStaff ? '#047857' : '#1d4ed8'),
+                              padding: '3px 8px',
+                              background: isStaff ? '#ecfdf5' : '#eff6ff',
+                              border: `1px solid ${isStaff ? '#a7f3d0' : '#bfdbfe'}`
+                            }}
+                          >
+                            {profile.role.toUpperCase()}
+                          </span>
+                        </td>
+
+                        {/* Fleet Org & FMCSA */}
+                        <td style={{ padding: '12px 14px' }}>
+                          <div style={{ fontWeight: 600 }}>{profile.companyName || '—'}</div>
+                          {profile.dotNumber || profile.mcNumber ? (
+                            <div style={{ fontFamily: MONO, fontSize: 11, color: MUTED, marginTop: 2 }}>
+                              DOT: {profile.dotNumber || '—'} · MC: {profile.mcNumber || '—'}
+                            </div>
+                          ) : isStaff ? (
+                            <div style={{ fontSize: 11, color: MUTED }}>Internal Recruiting Team</div>
+                          ) : (
+                            <div style={{ fontSize: 11, color: MUTED }}>Pending Authority Submission</div>
+                          )}
+                        </td>
+
+                        {/* Authority & Credit Status */}
+                        <td style={{ padding: '12px 14px' }}>
+                          {isStaff ? (
+                            <span
+                              style={{
+                                ...monoStyle(9, '#047857'),
+                                padding: '3px 8px',
+                                background: '#ecfdf5',
+                                border: '1px solid #a7f3d0',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: 4
+                              }}
+                            >
+                              <ShieldCheck size={11} /> FULL OPS ACCESS
+                            </span>
+                          ) : isVerified ? (
+                            <div>
+                              <span
+                                style={{
+                                  ...monoStyle(9, '#047857'),
+                                  padding: '3px 8px',
+                                  background: '#ecfdf5',
+                                  border: '1px solid #a7f3d0',
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  gap: 4
+                                }}
+                              >
+                                <Check size={11} /> VERIFIED MC
+                              </span>
+                              <div style={{ fontSize: 11, color: '#047857', marginTop: 3 }}>
+                                $20,000 Credit Line Approved
+                              </div>
+                            </div>
+                          ) : isRejected ? (
+                            <div>
+                              <span
+                                style={{
+                                  ...monoStyle(9, '#dc2626'),
+                                  padding: '3px 8px',
+                                  background: '#fef2f2',
+                                  border: '1px solid #fecaca',
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  gap: 4
+                                }}
+                              >
+                                <Ban size={11} /> SUSPENDED
+                              </span>
+                              <div style={{ fontSize: 11, color: '#dc2626', marginTop: 3 }}>
+                                Access Restricted
+                              </div>
+                            </div>
+                          ) : (
+                            <div>
+                              <span
+                                style={{
+                                  ...monoStyle(9, '#b45309'),
+                                  padding: '3px 8px',
+                                  background: '#fffbeb',
+                                  border: '1px solid #fde68a',
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  gap: 4
+                                }}
+                              >
+                                <Clock size={11} /> PENDING REVIEW
+                              </span>
+                              <div style={{ fontSize: 11, color: MUTED, marginTop: 3 }}>
+                                W-9 & Insurance Check
+                              </div>
+                            </div>
+                          )}
+                        </td>
+
+                        {/* Vetting Operations */}
+                        <td style={{ padding: '12px 14px', textAlign: 'right', whiteSpace: 'nowrap' }}>
+                          {isStaff ? (
+                            <span style={{ fontSize: 11, color: MUTED }}>Protected Account</span>
+                          ) : (
+                            <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                              {!isVerified && (
+                                <button
+                                  type="button"
+                                  disabled={isBusy}
+                                  onClick={() => handleVerifyCarrier(profile.id, 'verified_mc')}
+                                  style={{
+                                    padding: '5px 10px',
+                                    background: '#ecfdf5',
+                                    border: '1px solid #a7f3d0',
+                                    color: '#047857',
+                                    fontFamily: MONO,
+                                    fontSize: 10,
+                                    fontWeight: 700,
+                                    cursor: 'pointer',
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    gap: 4
+                                  }}
+                                >
+                                  <Check size={11} /> Approve MC & Credit
+                                </button>
+                              )}
+
+                              {isVerified && (
+                                <>
+                                  <button
+                                    type="button"
+                                    disabled={isBusy}
+                                    onClick={() => handleVerifyCarrier(profile.id, 'rejected')}
+                                    style={{
+                                      padding: '5px 8px',
+                                      background: '#fef2f2',
+                                      border: '1px solid #fecaca',
+                                      color: '#dc2626',
+                                      fontFamily: MONO,
+                                      fontSize: 10,
+                                      cursor: 'pointer'
+                                    }}
+                                  >
+                                    Suspend
+                                  </button>
+                                  <button
+                                    type="button"
+                                    disabled={isBusy}
+                                    onClick={() => handleVerifyCarrier(profile.id, 'pending_review')}
+                                    style={{
+                                      padding: '5px 8px',
+                                      background: '#fff',
+                                      border: `1px solid ${RULE}`,
+                                      fontFamily: MONO,
+                                      fontSize: 10,
+                                      cursor: 'pointer'
+                                    }}
+                                  >
+                                    Reset
+                                  </button>
+                                </>
+                              )}
+
+                              {isRejected && (
+                                <button
+                                  type="button"
+                                  disabled={isBusy}
+                                  onClick={() => handleVerifyCarrier(profile.id, 'pending_review')}
+                                  style={{
+                                    padding: '5px 8px',
+                                    background: '#fff',
+                                    border: `1px solid ${RULE}`,
+                                    fontFamily: MONO,
+                                    fontSize: 10,
+                                    cursor: 'pointer'
+                                  }}
+                                >
+                                  Re-evaluate
+                                </button>
+                              )}
+                            </div>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })
+                )}
               </tbody>
             </table>
           </div>
@@ -1253,6 +1678,20 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
         driver={selectedDriverForInvoice}
         isOpen={isInvoiceModalOpen}
         onClose={() => setIsInvoiceModalOpen(false)}
+      />
+
+      {/* Candidate Video Screening & DQ Dossier Inspector Modal */}
+      <DriverDossierModal
+        driver={selectedDriverForDossier}
+        isOpen={isDossierModalOpen}
+        onClose={() => setIsDossierModalOpen(false)}
+      />
+
+      {/* Direct Fleet Job Order Phone Intake Modal */}
+      <CreateJobOrderModal
+        isOpen={isCreateOrderModalOpen}
+        onClose={() => setIsCreateOrderModalOpen(false)}
+        onSubmit={handleCreateJobOrder}
       />
     </div>
   );

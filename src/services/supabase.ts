@@ -1,6 +1,6 @@
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import type { Session } from '@supabase/supabase-js';
-import type { AuthRole, DriverProfile, FleetJobOrder, UserProfile } from '../types';
+import type { AuthRole, CarrierVettingStatus, DriverProfile, FleetJobOrder, UserProfile } from '../types';
 import { INITIAL_DRIVERS } from '../data/mockDrivers';
 import { uploadVideoToS3Presigned } from './s3Storage';
 
@@ -14,10 +14,63 @@ const LOCAL_STORAGE_SESSION = 'haulmatch_local_session_v1';
 interface LocalUserRecord {
   id: string;
   email: string;
-  password: string;
+  password?: string;
   role: AuthRole;
   companyName?: string;
+  vettingStatus?: CarrierVettingStatus;
+  dotNumber?: string;
+  mcNumber?: string;
+  creditLineApproved?: boolean;
+  vettedAt?: string;
+  notes?: string;
 }
+
+const DEFAULT_LOCAL_USERS: LocalUserRecord[] = [
+  {
+    id: 'usr-admin-01',
+    email: 'admin@haulmatch.ai',
+    password: 'password123',
+    role: 'staff',
+    companyName: 'HaulMatch Headquarters'
+  },
+  {
+    id: 'usr-carrier-01',
+    email: 'recruiting@swiftlinelogistics.com',
+    password: 'password123',
+    role: 'carrier',
+    companyName: 'Swiftline Global Logistics LLC',
+    vettingStatus: 'verified_mc',
+    dotNumber: '3819204',
+    mcNumber: 'MC-149201',
+    creditLineApproved: true,
+    vettedAt: '2026-10-01T14:30:00Z',
+    notes: 'Contingency fee agreement on file · $20,000 credit line approved'
+  },
+  {
+    id: 'usr-carrier-02',
+    email: 'safety@apextransit.com',
+    password: 'password123',
+    role: 'carrier',
+    companyName: 'Apex Transit Freight LLC',
+    vettingStatus: 'pending_review',
+    dotNumber: '4019283',
+    mcNumber: 'MC-294019',
+    creditLineApproved: false,
+    notes: 'Application submitted · Certificate of insurance pending verification'
+  },
+  {
+    id: 'usr-carrier-03',
+    email: 'dispatch@lonestar-haul.com',
+    password: 'password123',
+    role: 'carrier',
+    companyName: 'Lone Star Dedicated Logistics',
+    vettingStatus: 'pending_review',
+    dotNumber: '2991048',
+    mcNumber: 'MC-389102',
+    creditLineApproved: false,
+    notes: 'New registration · Needs FMCSA authority & safety audit check'
+  }
+];
 
 const localAuthListeners = new Set<(session: Session | null) => void>();
 
@@ -45,12 +98,18 @@ const getLocalUsers = (): LocalUserRecord[] => {
     const raw = localStorage.getItem(LOCAL_STORAGE_USERS);
     if (raw) {
       const parsed = JSON.parse(raw);
-      if (Array.isArray(parsed)) return parsed;
+      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
     }
   } catch {
     // ignore
   }
-  return [];
+  // Initialize default users if empty
+  try {
+    localStorage.setItem(LOCAL_STORAGE_USERS, JSON.stringify(DEFAULT_LOCAL_USERS));
+  } catch {
+    // ignore
+  }
+  return DEFAULT_LOCAL_USERS;
 };
 
 const saveLocalUsers = (users: LocalUserRecord[]) => {
@@ -1276,8 +1335,61 @@ export const fetchAllProfiles = async (): Promise<UserProfile[]> => {
     id: u.id,
     email: u.email,
     role: u.role,
-    companyName: u.companyName
+    companyName: u.companyName,
+    vettingStatus: u.vettingStatus || (u.role === 'staff' ? undefined : 'pending_review'),
+    dotNumber: u.dotNumber,
+    mcNumber: u.mcNumber,
+    creditLineApproved: u.creditLineApproved,
+    vettedAt: u.vettedAt,
+    notes: u.notes
   }));
+};
+
+export const updateCarrierVettingStatus = async (
+  userId: string,
+  vettingStatus: CarrierVettingStatus,
+  creditLineApproved: boolean = vettingStatus === 'verified_mc'
+): Promise<{ success: boolean; error?: string }> => {
+  const vettedAt = vettingStatus === 'verified_mc' ? new Date().toISOString() : undefined;
+
+  // Supabase cloud update if available
+  if (supabaseClient) {
+    try {
+      const { error } = await supabaseClient
+        .from('profiles')
+        .update({
+          vetting_status: vettingStatus,
+          credit_line_approved: creditLineApproved,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', userId);
+
+      if (error) {
+        console.warn('Supabase updateCarrierVettingStatus warning:', error.message);
+      }
+    } catch (err: any) {
+      console.warn('Supabase updateCarrierVettingStatus error:', err?.message || err);
+    }
+  }
+
+  // Update local storage
+  try {
+    const users = getLocalUsers();
+    const updated = users.map((u) =>
+      u.id === userId
+        ? {
+            ...u,
+            vettingStatus,
+            creditLineApproved,
+            vettedAt: vettedAt || u.vettedAt
+          }
+        : u
+    );
+    saveLocalUsers(updated);
+    return { success: true };
+  } catch (err: any) {
+    return { success: false, error: err?.message || 'Failed to update carrier vetting status' };
+  }
 };
 
 export const updateDriverStatus = async (
