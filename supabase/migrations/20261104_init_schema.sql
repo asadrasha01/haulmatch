@@ -203,6 +203,8 @@ CREATE TRIGGER on_auth_user_created
   AFTER INSERT ON auth.users
   FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
 
+REVOKE EXECUTE ON FUNCTION public.handle_new_user() FROM PUBLIC, anon, authenticated;
+
 -- ============================================================================
 -- Supabase Storage Buckets Setup
 -- ============================================================================
@@ -223,10 +225,24 @@ ON CONFLICT (id) DO NOTHING;
 ALTER TABLE public.drivers ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.video_interviews ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.driver_documents ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.carriers ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.placement_contracts ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.retention_milestones ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.fleet_job_orders ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Carriers can view verified carrier profiles"
+ON public.carriers FOR SELECT
+USING (true);
+
+CREATE POLICY "Carriers can register company profile"
+ON public.carriers FOR INSERT
+WITH CHECK (true);
+
+CREATE POLICY "Carriers can update company profile"
+ON public.carriers FOR UPDATE
+USING (true)
+WITH CHECK (true);
 
 -- Policy: Anyone can view anonymized driver info and completed video interviews
 CREATE POLICY "Public can view marketplace driver profiles"
@@ -377,16 +393,16 @@ WITH CHECK (true);
 
 CREATE POLICY "Users can view their own profile"
 ON public.profiles FOR SELECT
-USING (auth.uid() = id);
+USING ((select auth.uid()) = id);
 
 CREATE POLICY "Users can insert their own profile"
 ON public.profiles FOR INSERT
-WITH CHECK (auth.uid() = id);
+WITH CHECK ((select auth.uid()) = id);
 
 CREATE POLICY "Users can update their own profile"
 ON public.profiles FOR UPDATE
-USING (auth.uid() = id)
-WITH CHECK (auth.uid() = id);
+USING ((select auth.uid()) = id)
+WITH CHECK ((select auth.uid()) = id);
 
 -- ============================================================================
 -- 10. Server-Side Blind Profile PII Masking View
@@ -396,7 +412,8 @@ WITH CHECK (auth.uid() = id);
 --   (a) the driver's status is 'unlocked', 'placed', or 'milestone_90', OR
 --   (b) a signed `placement_contracts` row exists for `driver_id`, OR
 --   (c) the caller is an authenticated internal HaulMatch 'staff' user.
-CREATE OR REPLACE VIEW public.drivers_marketplace_view AS
+CREATE OR REPLACE VIEW public.drivers_marketplace_view
+WITH (security_invoker = true) AS
 SELECT
   d.id,
   d.created_at,
@@ -428,31 +445,40 @@ SELECT
   CASE
     WHEN d.status IN ('unlocked', 'placed', 'milestone_90')
       OR EXISTS (SELECT 1 FROM public.placement_contracts pc WHERE pc.driver_id = d.id)
-      OR EXISTS (SELECT 1 FROM public.profiles p WHERE p.id = auth.uid() AND p.role = 'staff')
+      OR EXISTS (SELECT 1 FROM public.profiles p WHERE p.id = (select auth.uid()) AND p.role = 'staff')
     THEN d.full_name
     ELSE 'Protected Candidate (' || d.id || ')'
   END AS full_name,
   CASE
     WHEN d.status IN ('unlocked', 'placed', 'milestone_90')
       OR EXISTS (SELECT 1 FROM public.placement_contracts pc WHERE pc.driver_id = d.id)
-      OR EXISTS (SELECT 1 FROM public.profiles p WHERE p.id = auth.uid() AND p.role = 'staff')
+      OR EXISTS (SELECT 1 FROM public.profiles p WHERE p.id = (select auth.uid()) AND p.role = 'staff')
     THEN d.phone
     ELSE SUBSTRING(d.phone FROM 1 FOR 5) || ' •••-••••'
   END AS phone,
   CASE
     WHEN d.status IN ('unlocked', 'placed', 'milestone_90')
       OR EXISTS (SELECT 1 FROM public.placement_contracts pc WHERE pc.driver_id = d.id)
-      OR EXISTS (SELECT 1 FROM public.profiles p WHERE p.id = auth.uid() AND p.role = 'staff')
+      OR EXISTS (SELECT 1 FROM public.profiles p WHERE p.id = (select auth.uid()) AND p.role = 'staff')
     THEN d.email
     ELSE 'protected+' || LOWER(d.id) || '@haulmatch.ai'
   END AS email,
   CASE
     WHEN d.status IN ('unlocked', 'placed', 'milestone_90')
       OR EXISTS (SELECT 1 FROM public.placement_contracts pc WHERE pc.driver_id = d.id)
-      OR EXISTS (SELECT 1 FROM public.profiles p WHERE p.id = auth.uid() AND p.role = 'staff')
+      OR EXISTS (SELECT 1 FROM public.profiles p WHERE p.id = (select auth.uid()) AND p.role = 'staff')
     THEN d.license_number
     ELSE d.issuing_state || '-••••••••'
   END AS license_number
 FROM public.drivers d;
 
 GRANT SELECT ON public.drivers_marketplace_view TO anon, authenticated;
+
+-- ============================================================================
+-- 11. Foreign Key Covering Indexes
+-- ============================================================================
+CREATE INDEX IF NOT EXISTS idx_video_interviews_driver_id ON public.video_interviews(driver_id);
+CREATE INDEX IF NOT EXISTS idx_driver_documents_driver_id ON public.driver_documents(driver_id);
+CREATE INDEX IF NOT EXISTS idx_placement_contracts_driver_id ON public.placement_contracts(driver_id);
+CREATE INDEX IF NOT EXISTS idx_retention_milestones_contract_id ON public.retention_milestones(contract_id);
+CREATE INDEX IF NOT EXISTS idx_retention_milestones_driver_id ON public.retention_milestones(driver_id);

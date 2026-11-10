@@ -95,9 +95,11 @@ const DEFAULT_FLEET_JOB_ORDER: FleetJobOrder = {
   createdAt: '2026-11-01'
 };
 
-// Read from env or localStorage
-let supabaseUrl = import.meta.env.VITE_SUPABASE_URL || localStorage.getItem(STORAGE_KEY_URL) || '';
-let supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || localStorage.getItem(STORAGE_KEY_ANON) || '';
+// Read from env or localStorage (in Vitest unit tests, start disconnected unless setSupabaseCredentials is called)
+const isTestEnv = import.meta.env.MODE === 'test';
+let supabaseUrl = (!isTestEnv && import.meta.env.VITE_SUPABASE_URL) || localStorage.getItem(STORAGE_KEY_URL) || '';
+let supabaseAnonKey =
+  (!isTestEnv && import.meta.env.VITE_SUPABASE_ANON_KEY) || localStorage.getItem(STORAGE_KEY_ANON) || '';
 
 let supabaseClient: SupabaseClient | null = null;
 
@@ -1078,14 +1080,32 @@ export const seedInitialDriversToSupabase = async (): Promise<{
 // 90-Day Retention Milestones — SMS Pulse Checks & Bonus Disbursement
 
 export const sendRetentionSmsPulse = async (
-  driverId: string
-): Promise<{ success: boolean; error?: string; sentAt: string }> => {
+  driverId: string,
+  meta?: { driverName?: string; driverPhone?: string; carrierName?: string; daysCompleted?: number }
+): Promise<{ success: boolean; error?: string; sentAt: string; deliveryMode?: string }> => {
   const sentAt = new Date().toISOString();
   let success = true;
   let error: string | undefined;
 
   if (supabaseClient) {
     try {
+      if (typeof supabaseClient.functions?.invoke === 'function') {
+        const { data: fnData, error: fnError } = await supabaseClient.functions.invoke('retention-pulse', {
+          body: {
+            driverId,
+            ...meta
+          }
+        });
+
+        if (!fnError && fnData?.success) {
+          return {
+            success: true,
+            sentAt: fnData.sentAt || sentAt,
+            deliveryMode: fnData.deliveryMode || 'edge-logged'
+          };
+        }
+      }
+
       const { error: dbError } = await supabaseClient
         .from('retention_milestones')
         .update({ last_sms_pulse_sent: sentAt })
