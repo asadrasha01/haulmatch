@@ -136,3 +136,45 @@ export interface InterviewQuestion {
   maxSeconds: number;
   timeRemaining?: number;
 }
+
+export interface ActivityEvent {
+  id: string;
+  type:
+    | 'candidate_applied'
+    | 'carrier_unlocked'
+    | 'interview_scheduled'
+    | 'candidate_placed'
+    | 'milestone_reached'
+    | 'bonus_disbursed'
+    | 'record_deleted'
+    | 'invoice_created';
+  actor: string;
+  target: string;
+  details: string;
+  timestamp: string;
+  metadata?: Record<string, any>;
+}
+
+export interface InterviewProposal {
+  id: string;
+  driverId: string;
+  driverName: string;
+  carrierName: string;
+  contactPerson: string;
+  phone: string;
+  slots: string[];
+  notes?: string;
+  status: 'proposed' | 'accepted' | 'declined';
+  createdAt: string;
+}
+
+export interface CarrierSavedSearch {
+  id: string;
+  label: string;
+  cdlClass?: string;
+  equipment?: string;
+  minExperience?: number;
+  zip?: string;
+  emailAlerts: boolean;
+  createdAt: string;
+}

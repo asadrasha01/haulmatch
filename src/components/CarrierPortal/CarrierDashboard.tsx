@@ -4,10 +4,15 @@ import {
   Search,
   Truck,
   RefreshCw,
-  Briefcase
+  Briefcase,
+  Bell,
+  Bookmark,
+  Plus,
+  Check
 } from 'lucide-react';
-import type { DriverProfile, FleetJobOrder } from '../../types';
+import type { DriverProfile, FleetJobOrder, CarrierSavedSearch } from '../../types';
 import { fetchFleetJobOrders } from '../../services/supabase';
+import { fetchSavedSearches, saveCarrierSearch, deleteSavedSearch } from '../../services/activityEvents';
 import { DriverCard } from './DriverCard';
 import { DriverModal } from './DriverModal';
 import { PlacementContractModal } from './PlacementContractModal';
@@ -24,6 +29,11 @@ export const CarrierDashboard: React.FC<CarrierDashboardProps> = ({ drivers, onC
   const [selectedEquipment, setSelectedEquipment] = useState<string>('all');
   const [minExp, setMinExp] = useState<number>(0);
   const [statusFilter, setStatusFilter] = useState<string>('all');
+
+  const [savedSearches, setSavedSearches] = useState<CarrierSavedSearch[]>(() => fetchSavedSearches());
+  const [isSavingSearch, setIsSavingSearch] = useState(false);
+  const [searchNameInput, setSearchNameInput] = useState('');
+  const [savedSearchNotice, setSavedSearchNotice] = useState<string | null>(null);
 
   const [activeDriverForDetails, setActiveDriverForDetails] = useState<DriverProfile | null>(null);
   const [activeDriverForUnlock, setActiveDriverForUnlock] = useState<DriverProfile | null>(null);
@@ -114,6 +124,37 @@ export const CarrierDashboard: React.FC<CarrierDashboardProps> = ({ drivers, onC
     statusFilter,
     activeJobOrder
   ]);
+
+  const handleApplySavedSearch = (ss: CarrierSavedSearch) => {
+    if (ss.cdlClass) setSelectedCdlClass(ss.cdlClass);
+    if (ss.equipment) setSelectedEquipment(ss.equipment);
+    if (typeof ss.minExperience === 'number') setMinExp(ss.minExperience);
+    if (ss.zip) setSearchQuery(ss.zip);
+    setSavedSearchNotice(`Applied preset: ${ss.label}`);
+    setTimeout(() => setSavedSearchNotice(null), 3000);
+  };
+
+  const handleSaveCurrentSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!searchNameInput.trim()) return;
+    const newSearch = saveCarrierSearch(searchNameInput.trim(), {
+      cdlClass: selectedCdlClass !== 'all' ? selectedCdlClass : undefined,
+      equipment: selectedEquipment !== 'all' ? selectedEquipment : undefined,
+      minExperience: minExp > 0 ? minExp : undefined,
+      zip: searchQuery.trim() || undefined
+    });
+    setSavedSearches(fetchSavedSearches());
+    setIsSavingSearch(false);
+    setSearchNameInput('');
+    setSavedSearchNotice(`Alert saved: "${newSearch.label}"! Daily SMS & email notifications active.`);
+    setTimeout(() => setSavedSearchNotice(null), 4000);
+  };
+
+  const handleDeleteSavedSearch = (id: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    deleteSavedSearch(id);
+    setSavedSearches(fetchSavedSearches());
+  };
 
   const activeCount = drivers.filter((d) => d.status === 'available').length;
   const unlockedCount = drivers.filter((d) => d.status === 'unlocked' || d.status === 'placed').length;
@@ -262,6 +303,139 @@ export const CarrierDashboard: React.FC<CarrierDashboardProps> = ({ drivers, onC
             <option value="available">Available (Blind)</option>
             <option value="unlocked">Unlocked</option>
           </select>
+        </div>
+
+        {/* Saved Searches & Instant Alerts Bar */}
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            flexWrap: 'wrap',
+            gap: '10px',
+            paddingTop: '10px',
+            borderTop: '1px solid var(--border-subtle)'
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+            <span
+              style={{
+                fontSize: '0.74rem',
+                fontFamily: 'var(--font-mono)',
+                textTransform: 'uppercase',
+                color: 'var(--text-muted)',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '4px'
+              }}
+            >
+              <Bell size={12} color="var(--road-amber)" /> Saved Alerts:
+            </span>
+            {savedSearches.map((ss) => (
+              <button
+                key={ss.id}
+                type="button"
+                onClick={() => handleApplySavedSearch(ss)}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  padding: '4px 9px',
+                  fontSize: '0.76rem',
+                  borderRadius: '3px',
+                  background: '#fff',
+                  border: '1px solid var(--border-subtle)',
+                  cursor: 'pointer',
+                  color: 'var(--text-primary)'
+                }}
+              >
+                <Bookmark size={10} color="var(--road-amber)" />
+                <span>{ss.label}</span>
+                <span
+                  onClick={(e) => handleDeleteSavedSearch(ss.id, e)}
+                  title="Remove alert"
+                  style={{ color: '#94a3b8', marginLeft: '4px', fontSize: '0.85rem' }}
+                >
+                  ×
+                </span>
+              </button>
+            ))}
+            {!isSavingSearch ? (
+              <button
+                type="button"
+                onClick={() => setIsSavingSearch(true)}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '4px',
+                  padding: '4px 9px',
+                  fontSize: '0.74rem',
+                  borderRadius: '3px',
+                  background: 'rgba(240, 162, 59, 0.12)',
+                  border: '1px solid var(--road-amber)',
+                  color: '#b86c0d',
+                  fontWeight: 600,
+                  cursor: 'pointer'
+                }}
+              >
+                <Plus size={11} /> Save Search & Alert
+              </button>
+            ) : (
+              <form onSubmit={handleSaveCurrentSearch} style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                <input
+                  type="text"
+                  autoFocus
+                  required
+                  placeholder="e.g. Dallas Reefer 3+ Yrs"
+                  value={searchNameInput}
+                  onChange={(e) => setSearchNameInput(e.target.value)}
+                  style={{
+                    padding: '4px 8px',
+                    fontSize: '0.76rem',
+                    border: '1px solid var(--road-amber)',
+                    borderRadius: '3px',
+                    outline: 'none',
+                    minWidth: '160px'
+                  }}
+                />
+                <button
+                  type="submit"
+                  style={{
+                    padding: '4px 8px',
+                    fontSize: '0.74rem',
+                    background: 'var(--road-amber)',
+                    color: '#121315',
+                    border: 'none',
+                    borderRadius: '3px',
+                    fontWeight: 700,
+                    cursor: 'pointer'
+                  }}
+                >
+                  Save
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setIsSavingSearch(false)}
+                  style={{
+                    padding: '4px 6px',
+                    fontSize: '0.74rem',
+                    background: 'transparent',
+                    border: 'none',
+                    color: 'var(--text-muted)',
+                    cursor: 'pointer'
+                  }}
+                >
+                  Cancel
+                </button>
+              </form>
+            )}
+          </div>
+
+          {savedSearchNotice && (
+            <span style={{ fontSize: '0.76rem', color: '#047857', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '4px' }}>
+              <Check size={12} /> {savedSearchNotice}
+            </span>
+          )}
         </div>
 
         {/* Active Filter Indicators & Job Order Matcher */}

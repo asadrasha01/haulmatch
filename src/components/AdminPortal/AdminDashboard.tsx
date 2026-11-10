@@ -12,9 +12,11 @@ import {
   Video,
   Search,
   Send,
-  Loader2
+  Loader2,
+  Clock,
+  FileText
 } from 'lucide-react';
-import type { DriverProfile, FleetJobOrder, UserProfile } from '../../types';
+import type { DriverProfile, FleetJobOrder, UserProfile, ActivityEvent } from '../../types';
 import {
   fetchAllDrivers,
   fetchFleetJobOrders,
@@ -26,6 +28,8 @@ import {
   disburseRetentionBonus,
   seedInitialDriversToSupabase
 } from '../../services/supabase';
+import { fetchActivityEvents } from '../../services/activityEvents';
+import { PlacementInvoiceModal } from './PlacementInvoiceModal';
 
 interface AdminDashboardProps {
   onRefreshData?: () => void;
@@ -54,10 +58,14 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   onRefreshData,
   onOpenDatabaseModal
 }) => {
-  const [activeTab, setActiveTab] = useState<'candidates' | 'orders' | 'placements' | 'users' | 'system'>('candidates');
+  const [activeTab, setActiveTab] = useState<'candidates' | 'orders' | 'placements' | 'users' | 'system' | 'audit'>('candidates');
   const [drivers, setDrivers] = useState<DriverProfile[]>([]);
   const [jobOrders, setJobOrders] = useState<FleetJobOrder[]>([]);
   const [profiles, setProfiles] = useState<UserProfile[]>([]);
+  const [activityEvents, setActivityEvents] = useState<ActivityEvent[]>(() => fetchActivityEvents());
+  const [selectedDriverForInvoice, setSelectedDriverForInvoice] = useState<DriverProfile | null>(null);
+  const [isInvoiceModalOpen, setIsInvoiceModalOpen] = useState(false);
+  const [auditSearch, setAuditSearch] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [actionMessage, setActionMessage] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
 
@@ -79,6 +87,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
       setDrivers(driversData);
       setJobOrders(ordersData);
       setProfiles(profilesData);
+      setActivityEvents(fetchActivityEvents());
     } catch (err: any) {
       console.warn('Admin load error:', err);
     } finally {
@@ -429,6 +438,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
           { key: 'candidates', label: `Driver Pipeline (${drivers.length})`, icon: Users },
           { key: 'orders', label: `Fleet Intake Orders (${jobOrders.length})`, icon: Briefcase },
           { key: 'placements', label: `Placements & Escrow (${metrics.placedCount})`, icon: DollarSign },
+          { key: 'audit', label: `Activity Audit Feed (${activityEvents.length})`, icon: Clock },
           { key: 'users', label: `Auth Users (${profiles.length})`, icon: ShieldCheck },
           { key: 'system', label: 'Cloud Infrastructure', icon: Activity }
         ].map((tab) => {
@@ -914,6 +924,26 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                           <div style={{ display: 'inline-flex', gap: 6 }}>
                             <button
                               type="button"
+                              onClick={() => {
+                                setSelectedDriverForInvoice(driver);
+                                setIsInvoiceModalOpen(true);
+                              }}
+                              style={{
+                                padding: '4px 8px',
+                                background: '#fff',
+                                border: `1px solid ${RULE}`,
+                                fontFamily: MONO,
+                                fontSize: 10,
+                                cursor: 'pointer',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: 4
+                              }}
+                            >
+                              <FileText size={10} /> PDF Invoice
+                            </button>
+                            <button
+                              type="button"
                               onClick={() => handlePulse(driver.id)}
                               disabled={actionInProgress === `pulse-${driver.id}`}
                               style={{
@@ -956,6 +986,116 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                   })}
               </tbody>
             </table>
+          </div>
+        </div>
+      )}
+
+      {/* =========================================================================
+          TAB: ACTIVITY & ESCROW AUDIT FEED
+          ========================================================================= */}
+      {activeTab === 'audit' && (
+        <div style={{ background: '#fff', border: `1px solid ${RULE}`, padding: '24px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20, flexWrap: 'wrap', gap: 14 }}>
+            <div>
+              <h3 style={{ fontFamily: DISPLAY, fontWeight: 800, fontSize: 24, margin: 0, textTransform: 'uppercase' }}>
+                Activity & Escrow Audit Feed
+              </h3>
+              <p style={{ margin: '4px 0 0', fontSize: 13, color: MUTED }}>
+                Real-time chronological log of candidate unlocks, interview proposals, placement contracts, and escrow bonus disbursements.
+              </p>
+            </div>
+
+            <div style={{ position: 'relative' }}>
+              <Search size={14} color={MUTED} style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)' }} />
+              <input
+                type="text"
+                placeholder="Filter events by actor or candidate..."
+                value={auditSearch}
+                onChange={(e) => setAuditSearch(e.target.value)}
+                style={{
+                  padding: '8px 12px 8px 32px',
+                  fontFamily: MONO,
+                  fontSize: 12,
+                  border: `1px solid ${RULE}`,
+                  background: '#fff',
+                  outline: 'none',
+                  minWidth: 260
+                }}
+              />
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            {activityEvents
+              .filter(
+                (evt) =>
+                  !auditSearch.trim() ||
+                  evt.actor.toLowerCase().includes(auditSearch.toLowerCase()) ||
+                  evt.target.toLowerCase().includes(auditSearch.toLowerCase()) ||
+                  evt.details.toLowerCase().includes(auditSearch.toLowerCase())
+              )
+              .map((evt) => {
+                const badgeColor =
+                  evt.type === 'bonus_disbursed'
+                    ? { bg: '#ecfdf5', text: '#047857', border: '#a7f3d0' }
+                    : evt.type === 'carrier_unlocked'
+                    ? { bg: '#fffbeb', text: '#b45309', border: '#fde68a' }
+                    : evt.type === 'candidate_placed'
+                    ? { bg: '#eff6ff', text: '#1d4ed8', border: '#bfdbfe' }
+                    : evt.type === 'interview_scheduled'
+                    ? { bg: '#f5f3ff', text: '#6d28d9', border: '#ddd6fe' }
+                    : { bg: '#f1f5f9', text: '#475569', border: '#cbd5e1' };
+
+                return (
+                  <div
+                    key={evt.id}
+                    style={{
+                      padding: '16px 20px',
+                      border: `1px solid ${RULE}`,
+                      borderLeft: `4px solid ${badgeColor.text}`,
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'flex-start',
+                      flexWrap: 'wrap',
+                      gap: 12
+                    }}
+                  >
+                    <div style={{ flex: '1 1 400px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6 }}>
+                        <span
+                          style={{
+                            fontFamily: MONO,
+                            fontSize: 10,
+                            letterSpacing: '0.08em',
+                            textTransform: 'uppercase',
+                            padding: '2px 6px',
+                            background: badgeColor.bg,
+                            color: badgeColor.text,
+                            border: `1px solid ${badgeColor.border}`,
+                            fontWeight: 600
+                          }}
+                        >
+                          {evt.type.replace('_', ' ')}
+                        </span>
+                        <strong style={{ fontSize: 14.5, color: INK }}>{evt.target}</strong>
+                      </div>
+                      <div style={{ fontSize: 13, color: '#334155', lineHeight: 1.45 }}>{evt.details}</div>
+                      <div style={{ fontSize: 11.5, color: MUTED, marginTop: 4 }}>
+                        Initiated by: <strong>{evt.actor}</strong>
+                      </div>
+                    </div>
+
+                    <div style={{ textAlign: 'right', fontFamily: MONO, fontSize: 11, color: MUTED }}>
+                      {new Date(evt.timestamp).toLocaleString('en-US', {
+                        month: 'short',
+                        day: 'numeric',
+                        hour: '2-digit',
+                        minute: '2-digit'
+                      })}
+                    </div>
+                  </div>
+                );
+              })}
           </div>
         </div>
       )}
@@ -1107,6 +1247,13 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
           </div>
         </div>
       )}
+
+      {/* 1-Click Placement Fee Invoice Generator Modal */}
+      <PlacementInvoiceModal
+        driver={selectedDriverForInvoice}
+        isOpen={isInvoiceModalOpen}
+        onClose={() => setIsInvoiceModalOpen(false)}
+      />
     </div>
   );
 };
