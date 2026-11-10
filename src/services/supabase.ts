@@ -1247,3 +1247,119 @@ export const recordPlacementContractInDB = async (
 
   return true;
 };
+
+// ==============================================================================
+// Admin Operations & Management
+// ==============================================================================
+
+export const fetchAllProfiles = async (): Promise<UserProfile[]> => {
+  if (supabaseClient) {
+    try {
+      const { data, error } = await supabaseClient
+        .from('profiles')
+        .select('id, email, role, company_name')
+        .order('created_at', { ascending: false });
+
+      if (!error && data) {
+        return data.map((p) => ({
+          id: p.id,
+          email: p.email || '',
+          role: p.role,
+          companyName: p.company_name || undefined
+        }));
+      }
+    } catch (err) {
+      console.warn('fetchAllProfiles error:', err);
+    }
+  }
+
+  const localUsers = getLocalUsers();
+  return localUsers.map((u) => ({
+    id: u.id,
+    email: u.email,
+    role: u.role,
+    companyName: u.companyName
+  }));
+};
+
+export const updateDriverStatus = async (
+  driverId: string,
+  status: DriverProfile['status']
+): Promise<{ success: boolean; error?: string }> => {
+  if (supabaseClient) {
+    try {
+      const { error } = await supabaseClient
+        .from('drivers')
+        .update({ status, updated_at: new Date().toISOString() })
+        .eq('id', driverId);
+
+      if (error) return { success: false, error: error.message };
+    } catch (err: any) {
+      return { success: false, error: err?.message || 'Update driver status failed' };
+    }
+  }
+
+  try {
+    const drivers = await fetchAllDrivers();
+    const updated = drivers.map((d) => (d.id === driverId ? { ...d, status } : d));
+    localStorage.setItem(LOCAL_STORAGE_DRIVERS, JSON.stringify(updated));
+  } catch {
+    // ignore
+  }
+
+  return { success: true };
+};
+
+export const deleteDriver = async (
+  driverId: string
+): Promise<{ success: boolean; error?: string }> => {
+  if (supabaseClient) {
+    try {
+      const { error } = await supabaseClient
+        .from('drivers')
+        .delete()
+        .eq('id', driverId);
+
+      if (error) return { success: false, error: error.message };
+    } catch (err: any) {
+      return { success: false, error: err?.message || 'Delete driver failed' };
+    }
+  }
+
+  try {
+    const drivers = await fetchAllDrivers();
+    const updated = drivers.filter((d) => d.id !== driverId);
+    localStorage.setItem(LOCAL_STORAGE_DRIVERS, JSON.stringify(updated));
+  } catch {
+    // ignore
+  }
+
+  return { success: true };
+};
+
+export const deleteFleetJobOrder = async (
+  orderId: string
+): Promise<{ success: boolean; error?: string }> => {
+  if (supabaseClient) {
+    try {
+      const { error } = await supabaseClient
+        .from('fleet_job_orders')
+        .delete()
+        .eq('id', orderId);
+
+      if (error) return { success: false, error: error.message };
+    } catch (err: any) {
+      return { success: false, error: err?.message || 'Delete fleet job order failed' };
+    }
+  }
+
+  try {
+    const orders = await fetchFleetJobOrders();
+    const updated = orders.filter((o) => o.id !== orderId);
+    localStorage.setItem(LOCAL_STORAGE_JOB_ORDERS, JSON.stringify(updated));
+  } catch {
+    // ignore
+  }
+
+  return { success: true };
+};

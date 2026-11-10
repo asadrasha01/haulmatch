@@ -24,6 +24,9 @@ const LegalBlueprint = lazy(() =>
 const CarrierPacket = lazy(() =>
   import('./components/CarrierPacket/CarrierPacket').then((m) => ({ default: m.CarrierPacket }))
 );
+const AdminDashboard = lazy(() =>
+  import('./components/AdminPortal/AdminDashboard').then((m) => ({ default: m.AdminDashboard }))
+);
 const DatabaseModal = lazy(() =>
   import('./components/DatabaseModal').then((m) => ({ default: m.DatabaseModal }))
 );
@@ -43,7 +46,7 @@ import { Truck } from 'lucide-react';
 // Tabs beyond the public driver application that require a signed-in user.
 // 'driver' is intentionally excluded — applicants should never need an
 // account just to apply.
-const INTERNAL_ROLES: UserRole[] = ['carrier', 'tracker', 'packet', 'legal'];
+const INTERNAL_ROLES: UserRole[] = ['carrier', 'tracker', 'packet', 'legal', 'admin'];
 const CURRENT_YEAR = new Date().getFullYear();
 
 export const App: React.FC = () => {
@@ -285,7 +288,7 @@ export const App: React.FC = () => {
         >
           {INTERNAL_ROLES.includes(currentRole) && !authLoading && !canAccessCurrentRole && (
             <AuthGate
-              context={currentRole as 'carrier' | 'tracker' | 'packet' | 'legal'}
+              context={currentRole as 'carrier' | 'tracker' | 'packet' | 'legal' | 'admin'}
               onBackToDriverView={() => setCurrentRole('driver')}
               onOpenDatabaseModal={() => setIsDatabaseModalOpen(true)}
               onDemoAccess={handleDemoAccess}
@@ -309,6 +312,16 @@ export const App: React.FC = () => {
 
           {currentRole === 'legal' && canAccessCurrentRole && (
             <LegalBlueprint />
+          )}
+
+          {currentRole === 'admin' && canAccessCurrentRole && (
+            <AdminDashboard
+              onRefreshData={async () => {
+                const refreshed = await fetchAllDrivers();
+                setDrivers(refreshed);
+              }}
+              onOpenDatabaseModal={() => setIsDatabaseModalOpen(true)}
+            />
           )}
         </Suspense>
           </motion.div>
@@ -419,6 +432,12 @@ export const App: React.FC = () => {
                   style={{ color: currentRole === 'legal' ? '#f0a23b' : 'inherit' }}
                 >
                   Legal & Compliance
+                </button>
+                <button
+                  onClick={() => setCurrentRole('admin')}
+                  style={{ color: currentRole === 'admin' ? '#f0a23b' : 'inherit' }}
+                >
+                  Admin Ops
                 </button>
               </>
             )}

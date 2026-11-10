@@ -1,5 +1,5 @@
 import React from 'react';
-import { Truck, Users, BarChart3, Scale, Database, Briefcase, LogOut } from 'lucide-react';
+import { Truck, Users, BarChart3, Scale, Database, Briefcase, LogOut, ShieldAlert } from 'lucide-react';
 import type { UserRole, UserProfile } from '../types';
 
 interface HeaderProps {
@@ -43,7 +43,8 @@ export const Header: React.FC<HeaderProps> = ({
     { role: 'carrier', code: '02', label: `Carrier ATS (${activeDriverCount})`, icon: Users, staffOnly: false },
     { role: 'tracker', code: '03', label: '90-Day Tracker', icon: BarChart3, staffOnly: true },
     { role: 'packet', code: '04', label: 'Sales Packet', icon: Briefcase, staffOnly: true },
-    { role: 'legal', code: '05', label: 'Legal', icon: Scale, staffOnly: true }
+    { role: 'legal', code: '05', label: 'Legal', icon: Scale, staffOnly: true },
+    { role: 'admin', code: '06', label: 'Admin Ops', icon: ShieldAlert, staffOnly: true }
   ];
 
   const visibleTabs = tabs.filter((t) => !t.staffOnly || showStaffOnlyTabs);

@@ -1,4 +1,4 @@
-export type UserRole = 'driver' | 'carrier' | 'packet' | 'tracker' | 'legal';
+export type UserRole = 'driver' | 'carrier' | 'packet' | 'tracker' | 'legal' | 'admin';
 
 // Real authentication roles (Supabase Auth + `profiles` table). 'staff' is
 // the internal HaulMatch recruiting team (full access); 'carrier' is an

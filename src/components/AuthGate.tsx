@@ -4,7 +4,7 @@ import { signInWithEmail, signUpWithEmail, signInWithGoogle, isSupabaseConfigure
 import type { AuthRole, UserRole } from '../types';
 
 interface AuthGateProps {
-  context: Extract<UserRole, 'carrier' | 'tracker' | 'packet' | 'legal'>;
+  context: Extract<UserRole, 'carrier' | 'tracker' | 'packet' | 'legal' | 'admin'>;
   onBackToDriverView: () => void;
   onOpenDatabaseModal?: () => void;
   onDemoAccess?: (role: AuthRole) => void;
@@ -14,14 +14,16 @@ const CONTEXT_LABEL: Record<AuthGateProps['context'], string> = {
   carrier: 'Carrier ATS & Blind Candidate Pool',
   tracker: '90-Day Retention & Bounty Tracker',
   packet: 'Carrier Fleet Sales & Intake Packet',
-  legal: 'Legal & FMCSA Compliance Blueprint'
+  legal: 'Legal & FMCSA Compliance Blueprint',
+  admin: 'Admin Operations Command Center'
 };
 
 const CONTEXT_CODE: Record<AuthGateProps['context'], string> = {
   carrier: 'SEC-02 // CARRIER ATS',
   tracker: 'SEC-03 // RETENTION ENGINE',
   packet: 'SEC-04 // FLEET INTAKE',
-  legal: 'SEC-05 // COMPLIANCE'
+  legal: 'SEC-05 // COMPLIANCE',
+  admin: 'SEC-06 // ADMIN OPS'
 };
 
 const INK = '#121315';
