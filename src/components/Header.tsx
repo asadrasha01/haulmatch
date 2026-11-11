@@ -1,5 +1,5 @@
 import React from 'react';
-import { Truck, Users, BarChart3, Scale, Database, Briefcase, LogOut, ShieldAlert } from 'lucide-react';
+import { Truck, Users, BarChart3, Scale, Database, Briefcase, LogOut, ShieldAlert, ShieldCheck } from 'lucide-react';
 import type { UserRole, UserProfile } from '../types';
 
 interface HeaderProps {
@@ -39,12 +39,13 @@ export const Header: React.FC<HeaderProps> = ({
   const showStaffOnlyTabs = !profile || profile.role === 'staff';
 
   const tabs: NavTab[] = [
-    { role: 'driver', code: '01', label: 'Drivers', icon: Truck, staffOnly: false },
-    { role: 'carrier', code: '02', label: `Carrier ATS (${activeDriverCount})`, icon: Users, staffOnly: false },
-    { role: 'tracker', code: '03', label: '90-Day Tracker', icon: BarChart3, staffOnly: true },
-    { role: 'packet', code: '04', label: 'Sales Packet', icon: Briefcase, staffOnly: true },
-    { role: 'legal', code: '05', label: 'Legal', icon: Scale, staffOnly: true },
-    { role: 'admin', code: '06', label: 'Admin Ops', icon: ShieldAlert, staffOnly: true }
+    { role: 'driver', code: '01', label: 'Apply', icon: Truck, staffOnly: false },
+    { role: 'cabin', code: '02', label: 'Driver Cabin', icon: ShieldCheck, staffOnly: false },
+    { role: 'carrier', code: '03', label: `Carrier ATS (${activeDriverCount})`, icon: Users, staffOnly: false },
+    { role: 'tracker', code: '04', label: '90-Day Tracker', icon: BarChart3, staffOnly: true },
+    { role: 'packet', code: '05', label: 'Sales Packet', icon: Briefcase, staffOnly: true },
+    { role: 'legal', code: '06', label: 'Legal', icon: Scale, staffOnly: true },
+    { role: 'admin', code: '07', label: 'Admin Ops', icon: ShieldAlert, staffOnly: true }
   ];
 
   const visibleTabs = tabs.filter((t) => !t.staffOnly || showStaffOnlyTabs);

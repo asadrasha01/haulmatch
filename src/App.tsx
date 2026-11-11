@@ -33,6 +33,9 @@ const DatabaseModal = lazy(() =>
 const DriverStatusModal = lazy(() =>
   import('./components/DriverPortal/DriverStatusModal').then((m) => ({ default: m.DriverStatusModal }))
 );
+const DriverCabin = lazy(() =>
+  import('./components/DriverPortal/DriverCabin').then((m) => ({ default: m.DriverCabin }))
+);
 import type { AuthRole, DriverProfile, UserRole, UserProfile as AuthedUserProfile } from './types';
 import {
   fetchAllDrivers,
@@ -53,7 +56,18 @@ const INTERNAL_ROLES: UserRole[] = ['carrier', 'tracker', 'packet', 'legal', 'ad
 const CURRENT_YEAR = new Date().getFullYear();
 
 export const App: React.FC = () => {
-  const [currentRole, setCurrentRole] = useState<UserRole>('driver');
+  const [currentRole, setCurrentRole] = useState<UserRole>(() => {
+    if (typeof window === 'undefined') return 'driver';
+    try {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get('driverCabin') || params.get('view') === 'cabin') {
+        return 'cabin';
+      }
+    } catch {
+      // ignore
+    }
+    return 'driver';
+  });
   const [drivers, setDrivers] = useState<DriverProfile[]>(INITIAL_DRIVERS);
   const [isSupabaseActive, setIsSupabaseActive] = useState<boolean>(isSupabaseConfigured());
   const [isDatabaseModalOpen, setIsDatabaseModalOpen] = useState<boolean>(false);
@@ -61,8 +75,8 @@ export const App: React.FC = () => {
     if (typeof window === 'undefined') return { driverId: null, isOpen: false };
     try {
       const params = new URLSearchParams(window.location.search);
-      const statusParam = params.get('driverStatus');
-      return { driverId: statusParam, isOpen: Boolean(statusParam) };
+      const statusParam = params.get('driverStatus') || params.get('driverCabin');
+      return { driverId: statusParam, isOpen: Boolean(statusParam && !params.get('driverCabin')) };
     } catch {
       return { driverId: null, isOpen: false };
     }
@@ -225,7 +239,7 @@ export const App: React.FC = () => {
   // sandbox demo profile); staff can reach every internal tab, while a
   // carrier can only reach 'carrier' (the Carrier ATS).
   const isAuthorizedForRole = (role: UserRole): boolean => {
-    if (role === 'driver') return true;
+    if (role === 'driver' || role === 'cabin') return true;
     if (!profile) return false;
     if (profile.role === 'staff') return true;
     return role === 'carrier';
@@ -276,6 +290,7 @@ export const App: React.FC = () => {
         {currentRole === 'driver' && (
           <DriverHome
             onCarrierLogin={() => setCurrentRole('carrier')}
+            onOpenDriverCabin={() => setCurrentRole('cabin')}
             onQuickStart={handleQuickStart}
             onOpenStatusPortal={() => handleOpenStatusModal()}
             scrollToId={scrollToId}
@@ -293,6 +308,23 @@ export const App: React.FC = () => {
               />
             }
           />
+        )}
+
+        {currentRole === 'cabin' && (
+          <Suspense
+            fallback={
+              <p style={{ textAlign: 'center', color: 'var(--text-muted)', marginTop: '80px' }}>
+                Loading Driver Cabin...
+              </p>
+            }
+          >
+            <DriverCabin
+              drivers={drivers}
+              initialDriverId={statusModalDriverId || undefined}
+              onBackToHome={() => setCurrentRole('driver')}
+              onNavigateToCarrierATS={() => setCurrentRole('carrier')}
+            />
+          </Suspense>
         )}
 
         {/* While the initial session check is still in flight, don't flash

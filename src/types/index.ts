@@ -1,4 +1,4 @@
-export type UserRole = 'driver' | 'carrier' | 'packet' | 'tracker' | 'legal' | 'admin';
+export type UserRole = 'driver' | 'cabin' | 'carrier' | 'packet' | 'tracker' | 'legal' | 'admin';
 
 // Real authentication roles (Supabase Auth + `profiles` table). 'staff' is
 // the internal HaulMatch recruiting team (full access); 'carrier' is an
@@ -7,6 +7,29 @@ export type UserRole = 'driver' | 'carrier' | 'packet' | 'tracker' | 'legal' | '
 export type AuthRole = 'staff' | 'carrier';
 
 export type CarrierVettingStatus = 'pending_review' | 'verified_mc' | 'rejected';
+
+export interface CarrierOffer {
+  id: string;
+  driverId: string;
+  carrierName: string;
+  dotNumber?: string;
+  mcNumber?: string;
+  contactName: string;
+  contactPhone: string;
+  contactEmail?: string;
+  laneDescription: string;
+  equipmentType: string;
+  payPerMile: string;
+  weeklyMinGuarantee: string;
+  hometimeCadence: string;
+  status: 'pending' | 'accepted' | 'declined';
+  interviewSlots?: string[];
+  selectedSlot?: string;
+  signingBonus?: string;
+  petPolicy?: boolean;
+  passengerPolicy?: boolean;
+  createdAt: string;
+}
 
 export interface UserProfile {
   id: string;

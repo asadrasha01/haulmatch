@@ -11,6 +11,7 @@ interface DriverHomeProps {
   onCarrierLogin: () => void;
   onQuickStart: (prefill: QuickStartPrefill) => void;
   onOpenStatusPortal?: () => void;
+  onOpenDriverCabin?: () => void;
   scrollToId: (id: string) => void;
   applicationSlot: React.ReactNode;
 }
@@ -246,6 +247,7 @@ export const DriverHome: React.FC<DriverHomeProps> = ({
   onCarrierLogin,
   onQuickStart,
   onOpenStatusPortal,
+  onOpenDriverCabin,
   scrollToId,
   applicationSlot
 }) => {
@@ -626,6 +628,29 @@ export const DriverHome: React.FC<DriverHomeProps> = ({
               onClick={(e) => { e.preventDefault(); onCarrierLogin(); }}
             >
               For carriers
+            </a>
+            <a
+              href="#cabin"
+              onClick={(e) => {
+                e.preventDefault();
+                if (onOpenDriverCabin) onOpenDriverCabin();
+                else if (onOpenStatusPortal) onOpenStatusPortal();
+              }}
+              style={{
+                ...mono(11, AMBER, '0.08em'),
+                padding: '4px 10px',
+                background: 'rgba(240, 162, 59, 0.15)',
+                border: '1px solid rgba(240, 162, 59, 0.45)',
+                color: AMBER,
+                fontWeight: 600,
+                textDecoration: 'none',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 5
+              }}
+            >
+              <span>Driver Cabin</span>
+              <span style={{ fontSize: 9, padding: '1px 4px', background: AMBER, color: INK, borderRadius: 1 }}>NEW</span>
             </a>
             {onOpenStatusPortal && (
               <a
