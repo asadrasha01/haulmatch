@@ -33,3 +33,4 @@ test.describe('HaulMatch Guided Product Tour (3-Min Marketplace Walkthrough)', (
     await expect(page.getByText(/Driver Retention Bonus: \$1,500/i)).toBeVisible();
   });
 });
+

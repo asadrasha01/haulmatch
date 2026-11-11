@@ -30,3 +30,4 @@ test.describe('Driver Application & Fast-Track Onboarding Flow', () => {
     await expect(page.getByRole('button', { name: /Email Access Link/i })).toBeVisible();
   });
 });
+

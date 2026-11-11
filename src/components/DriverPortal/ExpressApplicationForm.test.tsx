@@ -92,6 +92,21 @@ describe('ExpressApplicationForm — document upload OCR gating', () => {
     await waitFor(() => expect(screen.getByText(/verified:/i)).toBeInTheDocument());
     expect(screen.queryByText(/could not verify this document/i)).not.toBeInTheDocument();
   });
+
+  it('opens live optical document scanner when clicking "Scan CDL with Camera"', async () => {
+    const user = await getToDocumentStep();
+
+    const scanBtn = screen.getByRole('button', { name: /scan cdl with camera/i });
+    expect(scanBtn).toBeInTheDocument();
+    await user.click(scanBtn);
+
+    expect(screen.getByRole('dialog', { name: /live document scanner/i })).toBeInTheDocument();
+    expect(screen.getByText(/DOC-01 \/\/ STATE CDL SCAN/i)).toBeInTheDocument();
+
+    const closeBtn = screen.getByLabelText(/close scanner/i);
+    await user.click(closeBtn);
+    expect(screen.queryByRole('dialog', { name: /live document scanner/i })).not.toBeInTheDocument();
+  });
 });
 
 describe('ExpressApplicationForm — application draft auto-save and restore', () => {

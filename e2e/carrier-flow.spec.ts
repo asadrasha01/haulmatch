@@ -32,3 +32,4 @@ test.describe('Carrier ATS & Candidate Unlock Flow', () => {
     await expect(page.getByText(/Candidate Contact Unlocked & Interview Proposer/i)).toBeVisible();
   });
 });
+

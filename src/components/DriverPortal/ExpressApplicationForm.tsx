@@ -10,6 +10,7 @@ import {
   Camera
 } from 'lucide-react';
 import { AsyncVideoRecorder } from './AsyncVideoRecorder';
+import { DocumentScannerModal } from './DocumentScannerModal';
 import { uploadDriverDocument } from '../../services/supabase';
 import { runOcrOnDocument } from '../../services/ocr';
 import type { DriverProfile } from '../../types';
@@ -207,6 +208,7 @@ export const ExpressApplicationForm: React.FC<ExpressApplicationFormProps> = ({
   // exists (after the video interview step) so they can be uploaded to Storage.
   const [cdlFile, setCdlFile] = useState<File | null>(null);
   const [medCardFile, setMedCardFile] = useState<File | null>(null);
+  const [scannerTarget, setScannerTarget] = useState<'cdl' | 'medCard' | null>(null);
 
   // Quick Demo Auto-fill Helper
   const fillSampleData = () => {
@@ -878,16 +880,46 @@ export const ExpressApplicationForm: React.FC<ExpressApplicationFormProps> = ({
                         <span>Verified: {formData.issuingState} {formData.cdlClass} CDL #{formData.licenseNumber || '(number not detected)'}</span>
                       </div>
                     ) : (
-                      <div>
-                        <label
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                        <button
+                          type="button"
+                          onClick={() => setScannerTarget('cdl')}
+                          disabled={ocrScanning}
                           style={{
                             width: '100%',
-                            padding: '14px 18px',
+                            padding: '13px 18px',
                             background: INK,
                             color: '#fff',
                             fontFamily: MONO,
                             fontSize: 12,
                             letterSpacing: '0.08em',
+                            textTransform: 'uppercase',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            cursor: ocrScanning ? 'not-allowed' : 'pointer',
+                            opacity: ocrScanning ? 0.6 : 1,
+                            border: 'none',
+                            borderRadius: 0
+                          }}
+                        >
+                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+                            <Camera size={16} color={AMBER} />
+                            <span>Scan CDL with Camera</span>
+                          </span>
+                          <span style={{ fontFamily: MONO, color: AMBER, fontSize: 11 }}>LIVE SCAN 📷</span>
+                        </button>
+
+                        <label
+                          style={{
+                            width: '100%',
+                            padding: '11px 16px',
+                            background: 'transparent',
+                            color: INK,
+                            border: `1px solid ${INK}`,
+                            fontFamily: MONO,
+                            fontSize: 11,
+                            letterSpacing: '0.06em',
                             textTransform: 'uppercase',
                             display: 'inline-flex',
                             alignItems: 'center',
@@ -908,7 +940,7 @@ export const ExpressApplicationForm: React.FC<ExpressApplicationFormProps> = ({
                           />
                         </label>
                         {ocrErrors.cdl && (
-                          <p style={{ fontSize: 13, color: '#dc2626', marginTop: 10, fontWeight: 500 }}>{ocrErrors.cdl}</p>
+                          <p style={{ fontSize: 13, color: '#dc2626', marginTop: 4, fontWeight: 500 }}>{ocrErrors.cdl}</p>
                         )}
                       </div>
                     )}
@@ -959,16 +991,46 @@ export const ExpressApplicationForm: React.FC<ExpressApplicationFormProps> = ({
                         <span>Verified: National Registry Valid Exp {formData.medCardExpiry}</span>
                       </div>
                     ) : (
-                      <div>
-                        <label
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                        <button
+                          type="button"
+                          onClick={() => setScannerTarget('medCard')}
+                          disabled={ocrScanning}
                           style={{
                             width: '100%',
-                            padding: '14px 18px',
+                            padding: '13px 18px',
                             background: INK,
                             color: '#fff',
                             fontFamily: MONO,
                             fontSize: 12,
                             letterSpacing: '0.08em',
+                            textTransform: 'uppercase',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            cursor: ocrScanning ? 'not-allowed' : 'pointer',
+                            opacity: ocrScanning ? 0.6 : 1,
+                            border: 'none',
+                            borderRadius: 0
+                          }}
+                        >
+                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+                            <Camera size={16} color={AMBER} />
+                            <span>Scan Med Card with Camera</span>
+                          </span>
+                          <span style={{ fontFamily: MONO, color: AMBER, fontSize: 11 }}>LIVE SCAN 📷</span>
+                        </button>
+
+                        <label
+                          style={{
+                            width: '100%',
+                            padding: '11px 16px',
+                            background: 'transparent',
+                            color: INK,
+                            border: `1px solid ${INK}`,
+                            fontFamily: MONO,
+                            fontSize: 11,
+                            letterSpacing: '0.06em',
                             textTransform: 'uppercase',
                             display: 'inline-flex',
                             alignItems: 'center',
@@ -989,7 +1051,7 @@ export const ExpressApplicationForm: React.FC<ExpressApplicationFormProps> = ({
                           />
                         </label>
                         {ocrErrors.medCard && (
-                          <p style={{ fontSize: 13, color: '#dc2626', marginTop: 10, fontWeight: 500 }}>{ocrErrors.medCard}</p>
+                          <p style={{ fontSize: 13, color: '#dc2626', marginTop: 4, fontWeight: 500 }}>{ocrErrors.medCard}</p>
                         )}
                       </div>
                     )}
@@ -1242,6 +1304,18 @@ export const ExpressApplicationForm: React.FC<ExpressApplicationFormProps> = ({
           </div>
         </div>
       )}
+
+      {/* Live Optical Document Scanner Modal */}
+      <DocumentScannerModal
+        isOpen={Boolean(scannerTarget)}
+        targetDoc={scannerTarget || 'cdl'}
+        onCapture={(file) => {
+          if (scannerTarget) {
+            void handleDocUpload(scannerTarget, file);
+          }
+        }}
+        onClose={() => setScannerTarget(null)}
+      />
     </div>
   );
 };
