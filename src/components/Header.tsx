@@ -1,5 +1,5 @@
 import React from 'react';
-import { Truck, Users, BarChart3, Scale, Database, Briefcase, LogOut, ShieldAlert, ShieldCheck } from 'lucide-react';
+import { Truck, Users, BarChart3, Scale, Database, Briefcase, LogOut, ShieldAlert, ShieldCheck, Play } from 'lucide-react';
 import type { UserRole, UserProfile } from '../types';
 
 interface HeaderProps {
@@ -10,6 +10,8 @@ interface HeaderProps {
   onOpenDatabaseModal: () => void;
   profile: UserProfile | null;
   onSignOut: () => void;
+  onStartTour?: () => void;
+  isTourActive?: boolean;
 }
 
 interface NavTab {
@@ -34,7 +36,9 @@ export const Header: React.FC<HeaderProps> = ({
   isSupabaseActive,
   onOpenDatabaseModal,
   profile,
-  onSignOut
+  onSignOut,
+  onStartTour,
+  isTourActive
 }) => {
   const showStaffOnlyTabs = !profile || profile.role === 'staff';
 
@@ -216,6 +220,31 @@ export const Header: React.FC<HeaderProps> = ({
                 <LogOut size={13} />
               </button>
             </div>
+          )}
+
+          {/* Guided Demo Tour Trigger */}
+          {onStartTour && (
+            <button
+              onClick={onStartTour}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 6,
+                padding: '8px 12px',
+                borderRadius: 0,
+                background: isTourActive ? 'rgba(240, 162, 59, 0.22)' : 'rgba(255, 255, 255, 0.06)',
+                border: isTourActive ? `1px solid ${AMBER}` : '1px solid rgba(255, 255, 255, 0.18)',
+                fontFamily: MONO,
+                fontSize: 11,
+                letterSpacing: '0.06em',
+                color: isTourActive ? AMBER : 'rgba(255, 255, 255, 0.9)',
+                cursor: 'pointer'
+              }}
+              title="Interactive 3-minute guided product tour"
+            >
+              <Play size={11} fill="currentColor" />
+              <span>{isTourActive ? 'Tour Active' : 'Guided Tour'}</span>
+            </button>
           )}
 
           {/* Database & Cloud Storage Status */}

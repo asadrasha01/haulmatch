@@ -12,6 +12,8 @@ interface DriverHomeProps {
   onQuickStart: (prefill: QuickStartPrefill) => void;
   onOpenStatusPortal?: () => void;
   onOpenDriverCabin?: () => void;
+  onStartTour?: () => void;
+  isTourActive?: boolean;
   scrollToId: (id: string) => void;
   applicationSlot: React.ReactNode;
 }
@@ -248,6 +250,8 @@ export const DriverHome: React.FC<DriverHomeProps> = ({
   onQuickStart,
   onOpenStatusPortal,
   onOpenDriverCabin,
+  onStartTour,
+  isTourActive,
   scrollToId,
   applicationSlot
 }) => {
@@ -623,6 +627,29 @@ export const DriverHome: React.FC<DriverHomeProps> = ({
           >
             <a href="#how" onClick={anchor('how')} className="hm-hide-mobile">How it works</a>
             <a href="#bonus" onClick={anchor('bonus')} className="hm-hide-mobile">The $1,500</a>
+            {onStartTour && (
+              <a
+                href="#guided-tour"
+                onClick={(e) => {
+                  e.preventDefault();
+                  onStartTour();
+                }}
+                style={{
+                  ...mono(11, isTourActive ? AMBER : '#fff', '0.08em'),
+                  padding: '4px 10px',
+                  background: isTourActive ? 'rgba(240, 162, 59, 0.25)' : 'rgba(255, 255, 255, 0.08)',
+                  border: isTourActive ? `1px solid ${AMBER}` : '1px solid rgba(255, 255, 255, 0.25)',
+                  color: isTourActive ? AMBER : '#fff',
+                  fontWeight: 600,
+                  textDecoration: 'none',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 5
+                }}
+              >
+                <span>🎬 Guided Tour</span>
+              </a>
+            )}
             <a
               href="#carriers"
               onClick={(e) => { e.preventDefault(); onCarrierLogin(); }}

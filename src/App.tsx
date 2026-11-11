@@ -37,6 +37,8 @@ const DriverCabin = lazy(() =>
   import('./components/DriverPortal/DriverCabin').then((m) => ({ default: m.DriverCabin }))
 );
 import type { AuthRole, DriverProfile, UserRole, UserProfile as AuthedUserProfile } from './types';
+import { GuidedTourBar } from './components/GuidedTour/GuidedTourBar';
+import { TOUR_STEPS, type TourStep } from './data/tourSteps';
 import {
   fetchAllDrivers,
   saveDriverToDatabase,
@@ -257,6 +259,67 @@ export const App: React.FC = () => {
     }
   };
 
+  const [isTourOpen, setIsTourOpen] = useState<boolean>(() => {
+    if (typeof window === 'undefined') return false;
+    try {
+      const params = new URLSearchParams(window.location.search);
+      return params.get('tour') === 'true';
+    } catch {
+      return false;
+    }
+  });
+  const [tourStep, setTourStep] = useState<number>(() => {
+    if (typeof window === 'undefined') return 1;
+    try {
+      const params = new URLSearchParams(window.location.search);
+      const s = parseInt(params.get('tourStep') || '1', 10);
+      return s >= 1 && s <= 4 ? s : 1;
+    } catch {
+      return 1;
+    }
+  });
+
+  const handleTourStepChange = (newStep: number) => {
+    setTourStep(newStep);
+    const target = TOUR_STEPS.find((s) => s.step === newStep);
+    if (!target) return;
+
+    if (target.role === 'driver') {
+      setCurrentRole('driver');
+      setTimeout(() => scrollToId('driver-application'), 120);
+    } else if (target.role === 'carrier') {
+      if (!profile) {
+        handleDemoAccess('carrier');
+      }
+      setCurrentRole('carrier');
+    } else if (target.role === 'cabin') {
+      setStatusModalDriverId(target.targetDriverId || 'CDL-8421');
+      setCurrentRole('cabin');
+    } else if (target.role === 'admin') {
+      if (profile?.role !== 'staff') {
+        handleDemoAccess('staff');
+      }
+      setCurrentRole('admin');
+    }
+  };
+
+  const handleTourTriggerAction = (step: TourStep) => {
+    if (step.step === 1) {
+      scrollToId('driver-application');
+    } else if (step.step === 2) {
+      scrollToId('carrier-ats-candidates');
+    } else if (step.step === 3) {
+      scrollToId('cabin-offers-section');
+    } else if (step.step === 4) {
+      scrollToId('admin-placements-section');
+    }
+  };
+
+  const handleStartTour = () => {
+    setIsTourOpen(true);
+    handleTourStepChange(1);
+  };
+
   const handleQuickStart = (prefill: QuickStartPrefill) => {
     setQuickStartPrefill({ ...prefill });
     scrollToId('driver-application');
@@ -264,6 +327,15 @@ export const App: React.FC = () => {
 
   return (
     <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
+      {/* Interactive End-to-End Guided Demo Tour Controller */}
+      <GuidedTourBar
+        isOpen={isTourOpen}
+        currentStep={tourStep}
+        onStepChange={handleTourStepChange}
+        onClose={() => setIsTourOpen(false)}
+        onTriggerAction={handleTourTriggerAction}
+      />
+
       {/* Top Navigation — shown on internal/carrier views; DriverHome has its own public header */}
       {currentRole !== 'driver' && (
         <Header
@@ -274,6 +346,8 @@ export const App: React.FC = () => {
           onOpenDatabaseModal={() => setIsDatabaseModalOpen(true)}
           profile={profile}
           onSignOut={handleSignOut}
+          onStartTour={handleStartTour}
+          isTourActive={isTourOpen}
         />
       )}
 
@@ -291,6 +365,8 @@ export const App: React.FC = () => {
           <DriverHome
             onCarrierLogin={() => setCurrentRole('carrier')}
             onOpenDriverCabin={() => setCurrentRole('cabin')}
+            onStartTour={handleStartTour}
+            isTourActive={isTourOpen}
             onQuickStart={handleQuickStart}
             onOpenStatusPortal={() => handleOpenStatusModal()}
             scrollToId={scrollToId}

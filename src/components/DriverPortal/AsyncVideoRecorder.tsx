@@ -28,6 +28,12 @@ interface SpeechRecognitionLike {
   stop: () => void;
 }
 
+const DEMO_SAMPLE_ANSWERS: Record<number, string> = {
+  1: 'I have been driving Class A tractor trailers for eight years across regional and OTR lanes with zero preventable accidents. I operate 53-foot reefers and dry vans with 10-speed manual and automatic transmissions, averaging 2,800 miles per week.',
+  2: 'During my pre-trip inspection I conduct a strict 15-minute walk-around checking brake air pressure, glad hands, tire tread, fluid levels, and fifth-wheel locking jaws. If severe winter weather hits, I reduce speed, increase following distance, and shut down safely at a designated truck stop.',
+  3: 'I communicate proactively with fleet dispatch through our ELD whenever there is receiver detention so we preserve my 11 and 14 hour HOS clocks. Reliable bi-weekly home-time and good maintenance are what keep me committed to completing the 90-day retention stay bonus.'
+};
+
 const getSpeechRecognitionCtor = (): (new () => SpeechRecognitionLike) | null => {
   const w = window as any;
   return w.SpeechRecognition || w.webkitSpeechRecognition || null;
@@ -48,6 +54,7 @@ export const AsyncVideoRecorder: React.FC<AsyncVideoRecorderProps> = ({ onInterv
   // recognizer's own confidence, used to compute a genuine fluency score
   // instead of a hardcoded constant. See fluencyScoring.ts.
   const [answers, setAnswers] = useState<Record<number, { text: string; confidence: number }>>({});
+  const [liveTranscript, setLiveTranscript] = useState<string>('');
   const [speechSupported] = useState<boolean>(!!getSpeechRecognitionCtor());
 
   const videoRef = useRef<HTMLVideoElement | null>(null);
@@ -117,6 +124,7 @@ export const AsyncVideoRecorder: React.FC<AsyncVideoRecorderProps> = ({ onInterv
     setVideoPreviewUrl(null);
     lastRecordedBlobRef.current = null;
     liveTranscriptRef.current = '';
+    setLiveTranscript('');
     confidenceSamplesRef.current = [];
 
     // If real media stream is available
@@ -167,6 +175,7 @@ export const AsyncVideoRecorder: React.FC<AsyncVideoRecorderProps> = ({ onInterv
           }
           if (finalText) {
             liveTranscriptRef.current += finalText;
+            setLiveTranscript(liveTranscriptRef.current);
           }
         };
         recognition.onerror = (event: any) => {
@@ -189,6 +198,25 @@ export const AsyncVideoRecorder: React.FC<AsyncVideoRecorderProps> = ({ onInterv
         return prev + 1;
       });
     }, 1000);
+  };
+
+  const handleUseDemoSampleAnswer = () => {
+    const sample = DEMO_SAMPLE_ANSWERS[currentQuestion.id] || '';
+    liveTranscriptRef.current = sample;
+    setLiveTranscript(sample);
+    confidenceSamplesRef.current = [0.96, 0.94, 0.98];
+    answerDurationsRef.current[currentQuestion.id] = 38;
+    setVideoPreviewUrl('simulated-interview-sample');
+    setAnswers((prev) => ({
+      ...prev,
+      [currentQuestion.id]: {
+        text: sample,
+        confidence: 0.96
+      }
+    }));
+    if (!completedQuestions.includes(currentQuestion.id)) {
+      setCompletedQuestions((prev) => [...prev, currentQuestion.id]);
+    }
   };
 
   const stopRecording = () => {
@@ -520,10 +548,68 @@ export const AsyncVideoRecorder: React.FC<AsyncVideoRecorderProps> = ({ onInterv
               </div>
 
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                {isRecording && (
+                  <div
+                    aria-label="Audio waveform indicator"
+                    style={{ display: 'flex', alignItems: 'center', gap: '3px', height: '14px', marginRight: '4px' }}
+                  >
+                    {[8, 14, 18, 11, 16, 19, 12, 17, 9].map((height, i) => (
+                      <span
+                        key={i}
+                        style={{
+                          width: '2px',
+                          height: `${height}px`,
+                          backgroundColor: '#34d399',
+                          borderRadius: '1px'
+                        }}
+                      />
+                    ))}
+                  </div>
+                )}
                 <Mic size={16} color={isRecording ? '#10b981' : '#94a3b8'} />
-                <span style={{ fontSize: '0.75rem', color: '#cbd5e1' }}>HD Audio 48kHz</span>
+                <span style={{ fontSize: '0.75rem', color: isRecording ? '#6ee7b7' : '#cbd5e1' }}>
+                  {isRecording ? 'Capturing 48kHz Audio' : 'HD Audio 48kHz'}
+                </span>
               </div>
             </div>
+
+            {/* Live Streaming Speech Preview when speaking */}
+            {isRecording && liveTranscript && (
+              <div
+                style={{
+                  position: 'absolute',
+                  top: '56px',
+                  left: '16px',
+                  right: '16px',
+                  padding: '8px 14px',
+                  background: 'rgba(9, 14, 26, 0.88)',
+                  backdropFilter: 'blur(8px)',
+                  borderRadius: '6px',
+                  border: '1px solid rgba(16, 185, 129, 0.45)',
+                  zIndex: 2,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '10px'
+                }}
+              >
+                <span
+                  style={{
+                    width: '8px',
+                    height: '8px',
+                    borderRadius: '50%',
+                    background: '#10b981',
+                    flexShrink: 0
+                  }}
+                  className="animate-recording"
+                />
+                <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.74rem', color: '#34d399', fontWeight: 700, flexShrink: 0 }}>
+                  SPEECH CAPTURED:
+                </span>
+                <span style={{ fontSize: '0.8rem', color: '#f8fafc', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                  "{liveTranscript.slice(-120)}"
+                </span>
+              </div>
+            )}
 
             {/* Floating Teleprompter Question Banner */}
             <div
@@ -603,11 +689,28 @@ export const AsyncVideoRecorder: React.FC<AsyncVideoRecorderProps> = ({ onInterv
               gap: '12px'
             }}
           >
-          <div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
             {!isRecording && !videoPreviewUrl && (
-              <button onClick={startRecording} className="btn-primary" style={{ padding: '12px 28px', fontSize: '1rem' }}>
-                <Play size={18} fill="currentColor" /> Start Recording Answer
-              </button>
+              <>
+                <button onClick={startRecording} className="btn-primary" style={{ padding: '12px 28px', fontSize: '1rem' }}>
+                  <Play size={18} fill="currentColor" /> Start Recording Answer
+                </button>
+                <button
+                  type="button"
+                  onClick={handleUseDemoSampleAnswer}
+                  className="btn-secondary"
+                  style={{
+                    padding: '12px 18px',
+                    fontSize: '0.88rem',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '6px'
+                  }}
+                  title="Inject verified commercial CDL voice answer for demo testing"
+                >
+                  <Sparkles size={16} color="#f0a23b" /> Quick Demo Voice Answer
+                </button>
+              </>
             )}
 
             {isRecording && (
@@ -617,7 +720,7 @@ export const AsyncVideoRecorder: React.FC<AsyncVideoRecorderProps> = ({ onInterv
             )}
 
             {!isRecording && videoPreviewUrl && (
-              <div style={{ display: 'flex', gap: '10px' }}>
+              <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
                 <button onClick={startRecording} className="btn-secondary">
                   <RotateCcw size={16} /> Re-record Question {currentQuestion.id}
                 </button>

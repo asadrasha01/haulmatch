@@ -1021,7 +1021,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
           TAB 3: PLACEMENTS, CONTRACTS & ESCROW LEDGER
           ========================================================================= */}
       {activeTab === 'placements' && (
-        <div style={{ background: '#fff', border: `1px solid ${RULE}`, padding: '24px' }}>
+        <div id="admin-placements-section" style={{ background: '#fff', border: `1px solid ${RULE}`, padding: '24px' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20, flexWrap: 'wrap', gap: 12 }}>
             <div>
               <h3 style={{ fontFamily: DISPLAY, fontWeight: 800, fontSize: 24, margin: 0, textTransform: 'uppercase' }}>

@@ -525,6 +525,7 @@ export const CarrierDashboard: React.FC<CarrierDashboardProps> = ({ drivers, onC
         </div>
       ) : (
         <motion.div
+          id="carrier-ats-candidates"
           layout
           style={{
             display: 'grid',

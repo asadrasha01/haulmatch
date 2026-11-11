@@ -477,7 +477,7 @@ export const DriverCabin: React.FC<DriverCabinProps> = ({
           TAB 1: CARRIER OFFERS & INTERVIEW REQUESTS
           ========================================================================= */}
       {activeTab === 'offers' && (
-        <div>
+        <div id="cabin-offers-section">
           <div style={{ marginBottom: 18 }}>
             <h3 style={{ fontFamily: DISPLAY, fontWeight: 800, fontSize: 24, margin: 0, textTransform: 'uppercase' }}>
               Active Fleet Inquiries & Placement Offers

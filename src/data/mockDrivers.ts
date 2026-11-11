@@ -3,23 +3,23 @@ import type { DriverProfile, InterviewQuestion } from '../types';
 export const INTERVIEW_QUESTIONS: InterviewQuestion[] = [
   {
     id: 1,
-    title: 'Experience & Equipment',
-    question: 'Tell us about your commercial driving history, the equipment you have operated (Dry Van, Reefer, Flatbed, etc.), and your preferred lanes or regions.',
-    promptGuidance: 'Tip: Mention your average weekly miles, typical commodities hauled, and years driving combination vehicles.',
+    title: 'Class A Equipment & Operational Profile',
+    question: 'Describe your commercial driving background, the specific equipment configurations you operate (53′ Reefer temp monitoring, Dry Van, Flatbed securement, Tanker), your transmission preference (10-speed manual vs automated), and your typical weekly operating radius.',
+    promptGuidance: 'Tip: State your total verifiable CDL-A years, average weekly miles (2,200–3,000+), commodities hauled, and regional vs OTR lane preferences.',
     maxSeconds: 90
   },
   {
     id: 2,
-    title: 'Safety, HOS & Winter Driving',
-    question: 'How do you approach pre-trip/post-trip inspections, hours-of-service compliance, and driving in hazardous winter conditions or mountain passes?',
-    promptGuidance: 'Tip: Highlight your clean inspection record, how you manage your electronic log (ELD), and when you decide to shut down for safety.',
+    title: 'DOT Pre-Trip Inspection & Extreme Weather Safety',
+    question: 'Walk us through your systematic 15-minute DOT walk-around inspection protocol (coupling, air brake checks, glad hands, tire tread/inflation) and how you handle sudden hazardous winter weather or mountain passes.',
+    promptGuidance: 'Tip: Detail your brake leak-down check, fifth-wheel jaw verification, and your safety threshold for pulling over into safe parking when chains or blizzard advisories occur.',
     maxSeconds: 90
   },
   {
     id: 3,
-    title: 'Carrier Expectations & Retention',
-    question: 'What are your expectations from a fleet partner regarding dispatch communication, maintenance response, and home-time reliability?',
-    promptGuidance: 'Tip: Be honest about your preferred home-time cadence and target weekly gross pay or CPM.',
+    title: 'Fleet Communication, HOS Compliance & Retention',
+    question: 'How do you communicate with fleet dispatch when facing receiver detention or tight ELD/HOS limits, and what factors keep you committed to completing your 90-day retention stay bonus with a carrier partner?',
+    promptGuidance: 'Tip: Explain how you balance on-time delivery with DOT 11/14-hour limits, professional radio/app communication, and what home-time rhythm you need.',
     maxSeconds: 90
   }
 ];
