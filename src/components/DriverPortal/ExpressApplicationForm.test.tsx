@@ -8,7 +8,8 @@ vi.mock('../../services/ocr', () => ({
 }));
 
 vi.mock('../../services/supabase', () => ({
-  uploadDriverDocument: vi.fn().mockResolvedValue({ success: true })
+  uploadDriverDocument: vi.fn().mockResolvedValue({ success: true }),
+  getSupabaseClient: () => null
 }));
 
 vi.mock('canvas-confetti', () => ({

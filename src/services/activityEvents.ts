@@ -1,4 +1,5 @@
 import type { ActivityEvent, InterviewProposal, CarrierSavedSearch } from '../types';
+import { getSupabaseClient } from './supabase';
 
 const STORAGE_KEY_EVENTS = 'haulmatch_activity_events_v1';
 const STORAGE_KEY_INTERVIEWS = 'haulmatch_interview_proposals_v1';
@@ -94,6 +95,39 @@ export const fetchActivityEvents = (): ActivityEvent[] => {
   return INITIAL_EVENTS;
 };
 
+export const fetchActivityEventsAsync = async (): Promise<ActivityEvent[]> => {
+  const client = getSupabaseClient();
+  if (client) {
+    try {
+      const { data, error } = await client
+        .from('activity_events')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (!error && data && data.length > 0) {
+        const events: ActivityEvent[] = data.map((d: any) => ({
+          id: d.id,
+          type: d.type,
+          actor: d.actor,
+          target: d.target,
+          details: d.details,
+          timestamp: d.created_at,
+          metadata: d.metadata || undefined
+        }));
+        try {
+          localStorage.setItem(STORAGE_KEY_EVENTS, JSON.stringify(events));
+        } catch {
+          // ignore
+        }
+        return events;
+      }
+    } catch (err) {
+      console.warn('fetchActivityEventsAsync error, fallback to local:', err);
+    }
+  }
+  return fetchActivityEvents();
+};
+
 export const logActivityEvent = (
   type: ActivityEvent['type'],
   actor: string,
@@ -117,6 +151,31 @@ export const logActivityEvent = (
     localStorage.setItem(STORAGE_KEY_EVENTS, JSON.stringify(updated));
   } catch {
     // ignore
+  }
+
+  // Cloud sync to Supabase
+  const client = getSupabaseClient();
+  if (client) {
+    void (async () => {
+      try {
+        const { error } = await client
+          .from('activity_events')
+          .insert([
+            {
+              id: newEvent.id,
+              type: newEvent.type,
+              actor: newEvent.actor,
+              target: newEvent.target,
+              details: newEvent.details,
+              created_at: newEvent.timestamp,
+              metadata: newEvent.metadata || {}
+            }
+          ]);
+        if (error) console.warn('Supabase activity event sync warning:', error.message);
+      } catch (err) {
+        console.warn('Supabase activity event error:', err);
+      }
+    })();
   }
 
   return newEvent;
@@ -201,6 +260,40 @@ export const fetchSavedSearches = (): CarrierSavedSearch[] => {
   return INITIAL_SAVED_SEARCHES;
 };
 
+export const fetchSavedSearchesAsync = async (): Promise<CarrierSavedSearch[]> => {
+  const client = getSupabaseClient();
+  if (client) {
+    try {
+      const { data, error } = await client
+        .from('carrier_saved_searches')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (!error && data && data.length > 0) {
+        const searches: CarrierSavedSearch[] = data.map((d: any) => ({
+          id: d.id,
+          label: d.label,
+          cdlClass: d.cdl_class || undefined,
+          equipment: d.equipment || undefined,
+          minExperience: d.min_experience ?? 0,
+          zip: d.zip || undefined,
+          emailAlerts: d.email_alerts ?? true,
+          createdAt: d.created_at
+        }));
+        try {
+          localStorage.setItem(STORAGE_KEY_SAVED_SEARCHES, JSON.stringify(searches));
+        } catch {
+          // ignore
+        }
+        return searches;
+      }
+    } catch (err) {
+      console.warn('fetchSavedSearchesAsync error, fallback to local:', err);
+    }
+  }
+  return fetchSavedSearches();
+};
+
 export const saveCarrierSearch = (
   label: string,
   criteria: {
@@ -229,6 +322,32 @@ export const saveCarrierSearch = (
     // ignore
   }
 
+  // Cloud sync to Supabase
+  const client = getSupabaseClient();
+  if (client) {
+    void (async () => {
+      try {
+        const { error } = await client
+          .from('carrier_saved_searches')
+          .insert([
+            {
+              id: newSearch.id,
+              label: newSearch.label,
+              cdl_class: newSearch.cdlClass || 'Class A',
+              equipment: newSearch.equipment || null,
+              min_experience: newSearch.minExperience || 0,
+              zip: newSearch.zip || null,
+              email_alerts: newSearch.emailAlerts ?? true,
+              created_at: newSearch.createdAt
+            }
+          ]);
+        if (error) console.warn('Supabase saved search insert warning:', error.message);
+      } catch (err) {
+        console.warn('Supabase saved search error:', err);
+      }
+    })();
+  }
+
   return newSearch;
 };
 
@@ -239,6 +358,21 @@ export const deleteSavedSearch = (searchId: string): void => {
     localStorage.setItem(STORAGE_KEY_SAVED_SEARCHES, JSON.stringify(updated));
   } catch {
     // ignore
+  }
+
+  const client = getSupabaseClient();
+  if (client) {
+    void (async () => {
+      try {
+        const { error } = await client
+          .from('carrier_saved_searches')
+          .delete()
+          .eq('id', searchId);
+        if (error) console.warn('Supabase saved search delete warning:', error.message);
+      } catch (err) {
+        console.warn('Supabase saved search delete error:', err);
+      }
+    })();
   }
 };
 

@@ -34,7 +34,7 @@ import {
   saveFleetJobOrder,
   updateCarrierVettingStatus
 } from '../../services/supabase';
-import { fetchActivityEvents, logActivityEvent } from '../../services/activityEvents';
+import { fetchActivityEvents, fetchActivityEventsAsync, logActivityEvent } from '../../services/activityEvents';
 import { PlacementInvoiceModal } from './PlacementInvoiceModal';
 import { DriverDossierModal } from './DriverDossierModal';
 import { CreateJobOrderModal } from './CreateJobOrderModal';
@@ -96,15 +96,16 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   const loadAllAdminData = async () => {
     setIsLoading(true);
     try {
-      const [driversData, ordersData, profilesData] = await Promise.all([
+      const [driversData, ordersData, profilesData, eventsData] = await Promise.all([
         fetchAllDrivers(),
         fetchFleetJobOrders(),
-        fetchAllProfiles()
+        fetchAllProfiles(),
+        fetchActivityEventsAsync()
       ]);
       setDrivers(driversData);
       setJobOrders(ordersData);
       setProfiles(profilesData);
-      setActivityEvents(fetchActivityEvents());
+      setActivityEvents(eventsData);
     } catch (err: any) {
       console.warn('Admin load error:', err);
     } finally {
@@ -116,15 +117,17 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     let isMounted = true;
     (async () => {
       try {
-        const [driversData, ordersData, profilesData] = await Promise.all([
+        const [driversData, ordersData, profilesData, eventsData] = await Promise.all([
           fetchAllDrivers(),
           fetchFleetJobOrders(),
-          fetchAllProfiles()
+          fetchAllProfiles(),
+          fetchActivityEventsAsync()
         ]);
         if (isMounted) {
           setDrivers(driversData);
           setJobOrders(ordersData);
           setProfiles(profilesData);
+          setActivityEvents(eventsData);
         }
       } catch (err: any) {
         console.warn('Admin load error:', err);

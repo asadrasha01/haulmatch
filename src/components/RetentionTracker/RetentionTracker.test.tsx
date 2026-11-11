@@ -10,6 +10,7 @@ const mockDisburseRetentionBonus = vi.fn();
 vi.mock('../../services/supabase', () => ({
   sendRetentionSmsPulse: (...args: unknown[]) => mockSendRetentionSmsPulse(...args),
   disburseRetentionBonus: (...args: unknown[]) => mockDisburseRetentionBonus(...args),
+  getSupabaseClient: () => null,
 }));
 
 const makePlacedDriver = (overrides: Partial<DriverProfile> = {}): DriverProfile => ({

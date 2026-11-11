@@ -12,7 +12,7 @@ import {
 } from 'lucide-react';
 import type { DriverProfile, FleetJobOrder, CarrierSavedSearch } from '../../types';
 import { fetchFleetJobOrders } from '../../services/supabase';
-import { fetchSavedSearches, saveCarrierSearch, deleteSavedSearch } from '../../services/activityEvents';
+import { fetchSavedSearches, fetchSavedSearchesAsync, saveCarrierSearch, deleteSavedSearch } from '../../services/activityEvents';
 import { DriverCard } from './DriverCard';
 import { DriverModal } from './DriverModal';
 import { PlacementContractModal } from './PlacementContractModal';
@@ -45,6 +45,11 @@ export const CarrierDashboard: React.FC<CarrierDashboardProps> = ({ drivers, onC
     fetchFleetJobOrders()
       .then((orders) => {
         if (active) setJobOrders(orders);
+      })
+      .catch(() => {});
+    fetchSavedSearchesAsync()
+      .then((searches) => {
+        if (active) setSavedSearches(searches);
       })
       .catch(() => {});
     return () => {

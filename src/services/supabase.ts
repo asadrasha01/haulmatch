@@ -190,6 +190,10 @@ export const isSupabaseConfigured = (): boolean => {
   return !!supabaseClient;
 };
 
+export const getSupabaseClient = (): SupabaseClient | null => {
+  return supabaseClient;
+};
+
 export const getSupabaseConfig = () => {
   return {
     isConfigured: !!supabaseClient,
@@ -1330,15 +1334,21 @@ export const fetchAllProfiles = async (): Promise<UserProfile[]> => {
     try {
       const { data, error } = await supabaseClient
         .from('profiles')
-        .select('id, email, role, company_name')
+        .select('id, email, role, company_name, vetting_status, dot_number, mc_number, credit_line_approved, vetted_at, notes')
         .order('created_at', { ascending: false });
 
-      if (!error && data) {
+      if (!error && data && data.length > 0) {
         return data.map((p) => ({
           id: p.id,
           email: p.email || '',
           role: p.role,
-          companyName: p.company_name || undefined
+          companyName: p.company_name || undefined,
+          vettingStatus: p.vetting_status || (p.role === 'staff' ? undefined : 'pending_review'),
+          dotNumber: p.dot_number || undefined,
+          mcNumber: p.mc_number || undefined,
+          creditLineApproved: p.credit_line_approved || false,
+          vettedAt: p.vetted_at || undefined,
+          notes: p.notes || undefined
         }));
       }
     } catch (err) {

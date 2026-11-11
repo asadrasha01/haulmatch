@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Truck,
   ShieldCheck,
@@ -18,6 +18,7 @@ import {
 import type { DriverProfile, CarrierOffer } from '../../types';
 import {
   fetchDriverOffers,
+  fetchDriverOffersAsync,
   acceptCarrierOffer,
   declineCarrierOffer
 } from '../../services/driverOffers';
@@ -73,6 +74,19 @@ export const DriverCabin: React.FC<DriverCabinProps> = ({
     setNotification({ text, type });
     setTimeout(() => setNotification(null), 4000);
   };
+
+  useEffect(() => {
+    let isMounted = true;
+    (async () => {
+      const liveOffers = await fetchDriverOffersAsync(selectedDriverId);
+      if (isMounted) {
+        setOffers(liveOffers);
+      }
+    })();
+    return () => {
+      isMounted = false;
+    };
+  }, [selectedDriverId]);
 
   const handleCopyMagicLink = () => {
     const origin = typeof window !== 'undefined' ? window.location.origin : 'https://haulmatch.ai';
