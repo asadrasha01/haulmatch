@@ -99,6 +99,13 @@ export const AsyncVideoRecorder: React.FC<AsyncVideoRecorderProps> = ({ onInterv
   };
 
   useEffect(() => {
+    if (hasStartedCamera && mediaStreamRef.current && videoRef.current && !videoPreviewUrl) {
+      videoRef.current.srcObject = mediaStreamRef.current;
+      videoRef.current.play().catch(() => {});
+    }
+  }, [hasStartedCamera, videoPreviewUrl]);
+
+  useEffect(() => {
     return () => {
       // Clean up camera on unmount
       if (mediaStreamRef.current) {
@@ -416,12 +423,14 @@ export const AsyncVideoRecorder: React.FC<AsyncVideoRecorderProps> = ({ onInterv
             ) : (
               <video
                 ref={videoRef}
+                autoPlay
                 playsInline
                 muted
                 style={{
                   width: '100%',
                   height: '100%',
                   objectFit: 'cover',
+                  transform: 'scaleX(-1)',
                   display: cameraError ? 'none' : 'block'
                 }}
               />
