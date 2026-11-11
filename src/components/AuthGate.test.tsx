@@ -98,4 +98,38 @@ describe('AuthGate — Admin Authentication & Sign In', () => {
       );
     });
   });
+
+  it('switches to password reset recovery mode and dispatches reset link', async () => {
+    const resetSpy = vi.spyOn(supabase, 'resetPasswordForEmail').mockResolvedValue({ success: true });
+
+    render(
+      <AuthGate
+        context="admin"
+        onBackToDriverView={vi.fn()}
+      />
+    );
+
+    const forgotBtn = screen.getByRole('button', { name: /Forgot password\?/i });
+    expect(forgotBtn).toBeInTheDocument();
+    fireEvent.click(forgotBtn);
+
+    expect(screen.getByText(/PASSWORD RESET RECOVERY/i)).toBeInTheDocument();
+
+    const emailInput = screen.getByPlaceholderText(/you@company\.com/i);
+    fireEvent.change(emailInput, { target: { value: 'safety@apextransit.com' } });
+
+    const submitResetBtn = screen.getByRole('button', { name: /Send Password Reset Link/i });
+    fireEvent.click(submitResetBtn);
+
+    await waitFor(() => {
+      expect(resetSpy).toHaveBeenCalledWith('safety@apextransit.com');
+    });
+
+    expect(screen.getByText(/RESET LINK DISPATCHED/i)).toBeInTheDocument();
+    expect(screen.getByText(/safety@apextransit\.com/i)).toBeInTheDocument();
+
+    const backBtn = screen.getByRole('button', { name: /Proceed to Sign In →/i });
+    fireEvent.click(backBtn);
+    expect(screen.getByPlaceholderText(/••••••••/i)).toBeInTheDocument();
+  });
 });

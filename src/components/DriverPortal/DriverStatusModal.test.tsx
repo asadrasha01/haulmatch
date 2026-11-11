@@ -113,4 +113,20 @@ describe('DriverStatusModal — Driver applicant status tracking', () => {
     expect(screen.getByText(/recruiter callback scheduled!/i)).toBeInTheDocument();
     expect(callbackBtn).toBeDisabled();
   });
+
+  it('triggers email dispatch for magic link access', async () => {
+    render(
+      <DriverStatusModal
+        isOpen={true}
+        driverId="CDL-1001"
+        drivers={mockDrivers}
+        onClose={vi.fn()}
+      />
+    );
+
+    const emailBtn = screen.getByRole('button', { name: /email access link/i });
+    fireEvent.click(emailBtn);
+
+    expect(await screen.findByText(/sent to m.vance@roadway.com!/i)).toBeInTheDocument();
+  });
 });

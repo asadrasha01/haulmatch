@@ -12,9 +12,11 @@ import {
   PhoneCall,
   Search,
   Lock,
-  Unlock
+  Unlock,
+  Mail
 } from 'lucide-react';
 import type { DriverProfile } from '../../types';
+import { sendNotificationEmail } from '../../services/supabase';
 
 interface DriverStatusModalProps {
   driverId?: string;
@@ -52,6 +54,7 @@ export const DriverStatusModal: React.FC<DriverStatusModalProps> = ({
 }) => {
   const [searchQuery, setSearchQuery] = useState(driverId || '');
   const [copiedLink, setCopiedLink] = useState(false);
+  const [emailSent, setEmailSent] = useState(false);
   const [callbackRequested, setCallbackRequested] = useState(false);
 
   if (!isOpen) return null;
@@ -73,6 +76,19 @@ export const DriverStatusModal: React.FC<DriverStatusModalProps> = ({
     void navigator.clipboard.writeText(url);
     setCopiedLink(true);
     setTimeout(() => setCopiedLink(false), 2500);
+  };
+
+  const handleEmailMagicLink = async () => {
+    if (!activeDriver?.email) return;
+    const url = `${window.location.origin}${window.location.pathname}?driverCabin=${activeDriver.id}`;
+    await sendNotificationEmail({
+      type: 'magic_link',
+      recipientEmail: activeDriver.email,
+      recipientName: activeDriver.fullName,
+      metadata: { url }
+    });
+    setEmailSent(true);
+    setTimeout(() => setEmailSent(false), 3500);
   };
 
   const handleSearchSubmit = (e: React.FormEvent) => {
@@ -223,23 +239,44 @@ export const DriverStatusModal: React.FC<DriverStatusModalProps> = ({
           </form>
 
           {activeDriver && (
-            <button
-              type="button"
-              onClick={handleCopyMagicLink}
-              style={{
-                ...monoLabel(11, INK),
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: 8,
-                padding: '9px 14px',
-                background: '#fff',
-                border: `1px solid ${RULE}`,
-                cursor: 'pointer'
-              }}
-            >
-              {copiedLink ? <Check size={14} color="#16a34a" /> : <Copy size={14} />}
-              <span>{copiedLink ? 'Link Copied to Clipboard!' : 'Copy Magic Status Link'}</span>
-            </button>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+              <button
+                type="button"
+                onClick={handleCopyMagicLink}
+                style={{
+                  ...monoLabel(11, INK),
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 8,
+                  padding: '9px 14px',
+                  background: '#fff',
+                  border: `1px solid ${RULE}`,
+                  cursor: 'pointer'
+                }}
+              >
+                {copiedLink ? <Check size={14} color="#16a34a" /> : <Copy size={14} />}
+                <span>{copiedLink ? 'Link Copied to Clipboard!' : 'Copy Magic Status Link'}</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={handleEmailMagicLink}
+                style={{
+                  ...monoLabel(11, emailSent ? '#047857' : INK),
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 8,
+                  padding: '9px 14px',
+                  background: emailSent ? '#ecfdf5' : '#fff',
+                  border: emailSent ? '1px solid #a7f3d0' : `1px solid ${RULE}`,
+                  cursor: 'pointer'
+                }}
+                title={`Send instant magic link to ${activeDriver.email}`}
+              >
+                {emailSent ? <Check size={14} color="#16a34a" /> : <Mail size={14} />}
+                <span>{emailSent ? `Sent to ${activeDriver.email}!` : 'Email Access Link'}</span>
+              </button>
+            </div>
           )}
         </div>
 

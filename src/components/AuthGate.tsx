@@ -1,6 +1,12 @@
 import React, { useState } from 'react';
-import { Lock, AlertCircle, Users, ShieldCheck, ArrowRight, Database, Sparkles } from 'lucide-react';
-import { signInWithEmail, signUpWithEmail, signInWithGoogle, isSupabaseConfigured } from '../services/supabase';
+import { Lock, AlertCircle, Users, ShieldCheck, ArrowRight, Database, Sparkles, KeyRound } from 'lucide-react';
+import {
+  signInWithEmail,
+  signUpWithEmail,
+  signInWithGoogle,
+  resetPasswordForEmail,
+  isSupabaseConfigured
+} from '../services/supabase';
 import type { AuthRole, UserRole } from '../types';
 
 interface AuthGateProps {
@@ -53,7 +59,8 @@ export const AuthGate: React.FC<AuthGateProps> = ({
   onOpenDatabaseModal,
   onDemoAccess
 }) => {
-  const [mode, setMode] = useState<'signIn' | 'signUp'>('signIn');
+  const isDemoMode = import.meta.env.VITE_DEMO_MODE !== 'false';
+  const [mode, setMode] = useState<'signIn' | 'signUp' | 'resetPassword'>('signIn');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [role, setRole] = useState<AuthRole>('carrier');
@@ -61,6 +68,7 @@ export const AuthGate: React.FC<AuthGateProps> = ({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [signUpSuccess, setSignUpSuccess] = useState(false);
+  const [resetSuccess, setResetSuccess] = useState(false);
 
   const configured = isSupabaseConfigured();
 
@@ -68,6 +76,17 @@ export const AuthGate: React.FC<AuthGateProps> = ({
     e.preventDefault();
     setError(null);
     setIsSubmitting(true);
+
+    if (mode === 'resetPassword') {
+      const result = await resetPasswordForEmail(email);
+      setIsSubmitting(false);
+      if (!result.success) {
+        setError(result.error || 'Failed to dispatch password reset email.');
+        return;
+      }
+      setResetSuccess(true);
+      return;
+    }
 
     const result =
       mode === 'signIn'
@@ -231,8 +250,8 @@ export const AuthGate: React.FC<AuthGateProps> = ({
             </div>
           </div>
 
-          {/* Instant Demo Preview Box (so local mode users can immediately explore all tabs) */}
-          {onDemoAccess && (
+          {/* Instant Demo Preview Box (gated in production by VITE_DEMO_MODE) */}
+          {isDemoMode && onDemoAccess && (
             <div
               style={{
                 background: 'rgba(255,255,255,0.04)',
@@ -419,7 +438,113 @@ export const AuthGate: React.FC<AuthGateProps> = ({
               </div>
             )}
 
-            {signUpSuccess ? (
+            {mode === 'resetPassword' ? (
+              <div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+                  <KeyRound size={16} color={AMBER_TEXT} />
+                  <span style={monoStyle(11, AMBER_TEXT, '0.08em')}>PASSWORD RESET RECOVERY</span>
+                </div>
+                <p style={{ fontSize: 13, color: MUTED, lineHeight: 1.5, marginBottom: 18 }}>
+                  Enter your verified account email. We will dispatch a secure password reset link to your inbox.
+                </p>
+
+                {resetSuccess ? (
+                  <div
+                    style={{
+                      padding: 18,
+                      background: PAPER,
+                      border: `1px solid ${INK}`,
+                      borderLeft: '4px solid #059669',
+                      color: INK,
+                      fontSize: 14,
+                      lineHeight: 1.5
+                    }}
+                  >
+                    <div style={{ ...monoStyle(11, '#047857', '0.08em'), marginBottom: 6 }}>RESET LINK DISPATCHED</div>
+                    Password reset link sent to <strong>{email}</strong>! Check your inbox to set a new password.
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setResetSuccess(false);
+                        setMode('signIn');
+                      }}
+                      className="btn-secondary"
+                      style={{ marginTop: 14, width: '100%' }}
+                    >
+                      Proceed to Sign In →
+                    </button>
+                  </div>
+                ) : (
+                  <form onSubmit={handleSubmit}>
+                    <div className="form-group" style={{ marginBottom: 16 }}>
+                      <label className="form-label">Corporate Email</label>
+                      <input
+                        type="email"
+                        className="form-input"
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        placeholder="you@company.com"
+                        autoComplete="email"
+                        required
+                      />
+                    </div>
+
+                    {error && (
+                      <div
+                        style={{
+                          padding: '12px 14px',
+                          background: '#fef2f2',
+                          border: '1px solid #fecaca',
+                          borderLeft: '3px solid #dc2626',
+                          color: '#b91c1c',
+                          fontSize: 13,
+                          marginBottom: 16
+                        }}
+                      >
+                        {error}
+                      </div>
+                    )}
+
+                    <button
+                      type="submit"
+                      className="btn-primary"
+                      style={{
+                        width: '100%',
+                        padding: '14px 18px',
+                        marginBottom: 10,
+                        justifyContent: 'space-between',
+                        fontSize: 15
+                      }}
+                      disabled={isSubmitting}
+                    >
+                      <span>{isSubmitting ? 'Sending Reset Link...' : 'Send Password Reset Link'}</span>
+                      <ArrowRight size={17} />
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setMode('signIn');
+                        setError(null);
+                      }}
+                      style={{
+                        width: '100%',
+                        padding: '12px 16px',
+                        background: PAPER_ALT,
+                        border: `1px solid ${RULE}`,
+                        color: INK,
+                        fontSize: 13,
+                        fontWeight: 600,
+                        borderRadius: 0,
+                        cursor: 'pointer'
+                      }}
+                    >
+                      ← Back to Sign In
+                    </button>
+                  </form>
+                )}
+              </div>
+            ) : signUpSuccess ? (
               <div
                 style={{
                   padding: 18,
@@ -504,7 +629,7 @@ export const AuthGate: React.FC<AuthGateProps> = ({
                   <div style={{ flex: 1, height: 1, background: RULE }} />
                 </div>
 
-                {mode === 'signIn' && (
+                {isDemoMode && mode === 'signIn' && (
                   <div
                     style={{
                       padding: '12px 14px',
@@ -622,7 +747,30 @@ export const AuthGate: React.FC<AuthGateProps> = ({
                 </div>
 
                 <div className="form-group" style={{ marginBottom: 20 }}>
-                  <label className="form-label">Password</label>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                    <label className="form-label" style={{ margin: 0 }}>Password</label>
+                    {mode === 'signIn' && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setMode('resetPassword');
+                          setError(null);
+                        }}
+                        style={{
+                          background: 'none',
+                          border: 'none',
+                          padding: 0,
+                          fontSize: 12,
+                          color: AMBER_TEXT,
+                          fontWeight: 600,
+                          cursor: 'pointer',
+                          textDecoration: 'underline'
+                        }}
+                      >
+                        Forgot password?
+                      </button>
+                    )}
+                  </div>
                   <input
                     type="password"
                     className="form-input"
