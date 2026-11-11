@@ -68,4 +68,12 @@ describe('PlacementInvoiceModal — Contingency Fee Invoice Generation', () => {
 
     expect(window.print).toHaveBeenCalledTimes(1);
   });
+
+  it('closes on Escape key press', () => {
+    const onClose = vi.fn();
+    render(<PlacementInvoiceModal driver={mockDriver} isOpen={true} onClose={onClose} />);
+
+    fireEvent.keyDown(window, { key: 'Escape' });
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
 });
